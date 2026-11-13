@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Omegle: Talk to Strangers!</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Inter & Outfit -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            omegle: {
+              blue: '#0070e0',
+              orange: '#ff6600',
+              darkBg: '#0f172a',
+              darkCard: '#1e293b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar for Chat Feed */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.4);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(156, 163, 175, 0.7);
+    }
+    .pulse-dot {
+      animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.95); }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 dark:bg-slate-900 text-gray-800 dark:text-gray-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+
+  <!-- HEADER -->
+  <header class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-30 px-4 py-3 shadow-sm">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <!-- Logo & Wordmark -->
+      <div class="flex items-center gap-3">
+        <a href="#" onclick="returnToLanding()" class="flex items-center gap-2 group">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-sky-400 flex items-center justify-center text-white font-display font-extrabold text-2xl shadow-md group-hover:scale-105 transition-transform">
+            O
+          </div>
+          <div class="flex flex-col">
+            <span class="font-display font-black text-2xl tracking-tight text-gray-900 dark:text-white leading-none">
+              omegle<span class="text-blue-500">.</span><span class="text-xs font-semibold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 ml-1">LIVE</span>
+            </span>
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Talk to strangers!</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- Center Online Counter -->
+      <div class="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 px-3.5 py-1.5 rounded-full shadow-xs">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 pulse-dot"></span>
+        <span id="online-count" class="font-bold text-xs sm:text-sm text-emerald-700 dark:text-emerald-400">
+          Calculating online users...
+        </span>
+      </div>
+
+      <!-- Right Actions: Theme Toggle -->
+      <div class="flex items-center gap-2">
+        <button id="theme-toggle" class="p-2.5 rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors" title="Toggle Light/Dark Theme">
+          <i id="theme-icon" class="fas fa-moon"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- APP CONTAINERS -->
+  <main class="flex-1 flex flex-col max-w-6xl w-full mx-auto p-3 sm:p-4 md:p-6">
+
+    <!-- 1. LANDING SCREEN -->
+    <div id="landing-screen" class="flex-1 flex flex-col justify-center items-center py-6">
+      <div class="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-gray-200 dark:border-slate-700 p-6 sm:p-8 text-center space-y-6">
+
+        <div class="space-y-2">
+          <h1 class="text-3xl sm:text-4xl font-extrabold font-display tracking-tight text-gray-900 dark:text-white">
+            Meet strangers, anonymously.
+          </h1>
+          <p class="text-gray-600 dark:text-gray-300 text-sm sm:text-base max-w-lg mx-auto">
+            Omegle pairs you at random with another user for a 1-on-1 text or video conversation. Completely free, no login required.
+          </p>
+        </div>
+
+        <!-- Testing Tip Banner -->
+        <div class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-3.5 text-left flex items-start gap-3">
+          <i class="fas fa-circle-info text-blue-500 text-lg mt-0.5"></i>
+          <div class="text-xs sm:text-sm text-blue-900 dark:text-blue-200">
+            <span class="font-bold">Testing Tip:</span> Open this app in a <strong>second browser tab or window</strong> to test live stranger matching with yourself instantly!
+          </div>
+        </div>
+
+        <!-- Interests Tag Input Section -->
+        <div class="bg-gray-50 dark:bg-slate-900/60 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-slate-700 text-left space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="font-semibold text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2">
+              <i class="fas fa-hashtag text-blue-500"></i> What do you want to talk about? (Optional)
+            </label>
+            <div class="flex items-center gap-2">
+              <input type="checkbox" id="match-interests-checkbox" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer" checked>
+              <label for="match-interests-checkbox" class="text-xs text-gray-600 dark:text-gray-400 font-medium cursor-pointer">
+                Prefer common interests
+              </label>
+            </div>
+          </div>
+
+          <!-- Tags Container -->
+          <div id="tags-container" class="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-xl p-2.5 min-h-[48px] focus-within:ring-2 focus-within:ring-blue-500 transition">
+            <!-- Dynamic Badges will render here -->
+            <input type="text" id="interest-input" placeholder="Type interest & press Enter (e.g., gaming, music, anime)..." class="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 min-w-[200px]">
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Press Enter or comma to add topic tags.</p>
+        </div>
+
+        <!-- Start Mode Buttons -->
+        <div class="space-y-3 pt-2">
+          <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Start Chatting</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Text Mode Button -->
+            <button onclick="startMatching('text')" class="group relative flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all">
+              <i class="fas fa-comment-dots text-xl group-hover:scale-110 transition-transform"></i>
+              <div class="text-left">
+                <div class="text-lg leading-tight">Text</div>
+                <div class="text-xs text-blue-100 font-normal">Instant anonymous text chat</div>
+              </div>
+            </button>
+
+            <!-- Video Mode Button -->
+            <button onclick="startMatching('video')" class="group relative flex items-center justify-center gap-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all">
+              <i class="fas fa-video text-xl group-hover:scale-110 transition-transform"></i>
+              <div class="text-left">
+                <div class="text-lg leading-tight">Video</div>
+                <div class="text-xs text-amber-100 font-normal">Peer-to-peer live camera chat</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Terms Footer note -->
+        <p class="text-xs text-gray-400 dark:text-gray-500 pt-2">
+          By starting a chat, you agree to treat strangers with respect. You can disconnect at any time.
+        </p>
+      </div>
+    </div>
+
+    <!-- 2. SEARCHING / MATCHMAKING SCREEN -->
+    <div id="searching-screen" class="hidden flex-1 flex flex-col justify-center items-center py-10">
+      <div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-gray-200 dark:border-slate-700 p-8 text-center space-y-6">
+        
+        <div class="relative w-20 h-20 mx-auto">
+          <div class="absolute inset-0 rounded-full border-4 border-blue-200 dark:border-slate-700"></div>
+          <div class="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+          <div class="absolute inset-0 flex items-center justify-center text-blue-600 dark:text-blue-400 text-xl">
+            <i class="fas fa-search"></i>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">Looking for a stranger...</h2>
+          <p id="search-subtext" class="text-sm text-gray-500 dark:text-gray-400">
+            Scanning for available online users in <span id="search-mode-text" class="font-semibold text-blue-500">Text</span> mode...
+          </p>
+        </div>
+
+        <div id="searching-interests-badge" class="hidden flex flex-wrap justify-center gap-1.5 pt-1">
+          <span class="text-xs text-gray-400">Filtering for tags:</span>
+          <!-- Added interest pills here -->
+        </div>
+
+        <div class="pt-2">
+          <button onclick="cancelMatching()" class="w-full py-3 px-4 rounded-xl border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-slate-700 transition">
+            Cancel Search
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. CHAT ROOM SCREEN -->
+    <div id="chat-screen" class="hidden flex-1 flex flex-col lg:flex-row gap-4 h-[calc(100vh-100px)] min-h-[500px]">
+      
+      <!-- Left Panel: Video Feeds (Shown in Video mode) -->
+      <div id="video-container" class="hidden lg:w-1/2 w-full flex flex-col gap-3 h-full">
+        <div class="relative flex-1 bg-black rounded-2xl overflow-hidden border border-gray-800 shadow-inner flex items-center justify-center">
+          <!-- Remote Video -->
+          <video id="remote-video" autoplay playsinline class="w-full h-full object-cover"></video>
+          <div id="remote-video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 text-gray-400 p-4 text-center">
+            <i class="fas fa-user-circle text-6xl text-slate-700 mb-3 animate-pulse"></i>
+            <span class="font-medium text-sm">Connecting Stranger's camera...</span>
+          </div>
+          <!-- Label -->
+          <div class="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-xs px-2.5 py-1 rounded-md font-semibold flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-orange-500"></span> Stranger
+          </div>
+        </div>
+
+        <div class="relative h-44 sm:h-52 bg-slate-900 rounded-2xl overflow-hidden border border-gray-800 shadow-md flex items-center justify-center">
+          <!-- Local Video -->
+          <video id="local-video" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
+          <div id="local-video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-gray-400 p-2 text-center">
+            <i class="fas fa-video-slash text-3xl text-slate-700 mb-1"></i>
+            <span class="text-xs">Camera off or permission denied</span>
+          </div>
+          <!-- Label -->
+          <div class="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-xs px-2.5 py-1 rounded-md font-semibold flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span> You (Local)
+          </div>
+          
+          <!-- Media Controls Bar -->
+          <div class="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-slate-950/80 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/60">
+            <button id="toggle-mic-btn" onclick="toggleMic()" class="p-2 w-9 h-9 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition flex items-center justify-center text-xs" title="Mute/Unmute Mic">
+              <i class="fas fa-microphone"></i>
+            </button>
+            <button id="toggle-cam-btn" onclick="toggleCam()" class="p-2 w-9 h-9 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition flex items-center justify-center text-xs" title="Turn Camera On/Off">
+              <i class="fas fa-video"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Chat Log & Input -->
+      <div class="flex-1 flex flex-col bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-md overflow-hidden h-full">
+
+        <!-- Chat Header Info Bar -->
+        <div class="px-4 py-3 bg-gray-50 dark:bg-slate-900/80 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 overflow-hidden">
+            <span id="chat-mode-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
+              TEXT CHAT
+            </span>
+            <div id="shared-interests-header" class="hidden flex items-center gap-1 overflow-x-auto py-0.5">
+              <span class="text-xs text-gray-400 font-medium">Shared:</span>
+              <!-- Common tags inserted dynamically -->
+            </div>
+          </div>
+          <span class="text-xs text-gray-400 font-medium hidden sm:inline">Press <kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-slate-700 rounded text-gray-600 dark:text-gray-300 font-mono text-[10px]">Esc</kbd> twice to switch stranger</span>
+        </div>
+
+        <!-- Chat Messages Log -->
+        <div id="chat-feed" class="flex-1 p-4 overflow-y-auto space-y-3 bg-white dark:bg-slate-800">
+          <!-- System Welcome Message -->
+          <div class="text-center my-2">
+            <span class="inline-block px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-300 text-xs font-medium border border-blue-100 dark:border-blue-900/60">
+              You are now connected to a random stranger. Say hi!
+            </span>
+          </div>
+        </div>
+
+        <!-- Typing Indicator Bar -->
+        <div id="typing-indicator" class="h-6 px-4 text-xs font-medium text-gray-400 dark:text-gray-500 italic flex items-center gap-2 transition-opacity opacity-0">
+          <span class="inline-flex gap-1">
+            <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+            <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+            <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+          </span>
+          Stranger is typing...
+        </div>
+
+        <!-- Chat Bottom Action & Input Bar -->
+        <div class="p-3 bg-gray-50 dark:bg-slate-900/90 border-t border-gray-200 dark:border-slate-700 flex items-center gap-2">
+          <!-- Omegle Multi-State Action Button: Stop -> Really? -> New -->
+          <button id="esc-action-btn" onclick="handleEscAction()" class="h-12 px-4 sm:px-5 rounded-xl font-bold text-sm tracking-wide transition-all shadow-sm flex items-center justify-center whitespace-nowrap min-w-[90px] sm:min-w-[110px] bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-slate-600">
+            Stop
+          </button>
+
+          <!-- Input Field -->
+          <div class="flex-1 relative">
+            <input type="text" id="chat-input" placeholder="Type a message and press Enter..." class="w-full h-12 pl-4 pr-12 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+            <button id="send-msg-btn" onclick="sendChatMessage()" class="absolute right-2 top-2 h-8 w-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition" title="Send Message">
+              <i class="fas fa-paper-plane text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FIREBASE MODULE & APPLICATION LOGIC -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { 
+      getFirestore, 
+      doc, 
+      getDoc, 
+      setDoc, 
+      updateDoc, 
+      deleteDoc, 
+      onSnapshot, 
+      collection, 
+      getDocs,
+      addDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // ------------------------------------------------------------------
+    // APP STATE & GLOBAL VARS
+    // ------------------------------------------------------------------
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'omegle-clone-app';
+    let firebaseConfig;
+    try {
+      firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+        apiKey: "demo-api-key",
+        authDomain: "demo-omegle.firebaseapp.com",
+        projectId: "demo-omegle",
+        storageBucket: "demo-omegle.appspot.com",
+        messagingSenderId: "123456789",
+        appId: "1:123456789:web:demo"
+      };
+    } catch(e) {
+      firebaseConfig = { apiKey: "demo-api-key", projectId: "demo-omegle" };
+    }
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUser = null;
+    let interestTags = [];
+    let currentMode = 'text'; // 'text' | 'video'
+    let currentRoomId = null;
+    let queueDocRef = null;
+    let roomUnsubscribe = null;
+    let messagesUnsubscribe = null;
+    let candidateUnsubcribeA = null;
+    let candidateUnsubcribeB = null;
+
+    // Esc Button Multi-State: 'STOP' | 'REALLY' | 'NEW'
+    let escButtonState = 'STOP';
+
+    // Typing State
+    let typingTimeout = null;
+
+    // WebRTC Peer Connection State
+    let peerConnection = null;
+    let localStream = null;
+    let isOfferer = false;
+    let micMuted = false;
+    let camDisabled = false;
+
+    const rtcConfig = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
+
+    // ------------------------------------------------------------------
+    // DOM ELEMENTS
+    // ------------------------------------------------------------------
+    const landingScreen = document.getElementById('landing-screen');
+    const searchingScreen = document.getElementById('searching-screen');
+    const chatScreen = document.getElementById('chat-screen');
+    const videoContainer = document.getElementById('video-container');
+
+    const interestInput = document.getElementById('interest-input');
+    const tagsContainer = document.getElementById('tags-container');
+    const matchInterestsCheckbox = document.getElementById('match-interests-checkbox');
+    const onlineCountElem = document.getElementById('online-count');
+
+    const searchModeText = document.getElementById('search-mode-text');
+    const searchingInterestsBadge = document.getElementById('searching-interests-badge');
+    const chatFeed = document.getElementById('chat-feed');
+    const chatInput = document.getElementById('chat-input');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const escActionBtn = document.getElementById('esc-action-btn');
+    const chatModeBadge = document.getElementById('chat-mode-badge');
+    const sharedInterestsHeader = document.getElementById('shared-interests-header');
+
+    const localVideo = document.getElementById('local-video');
+    const remoteVideo = document.getElementById('remote-video');
+    const remoteVideoPlaceholder = document.getElementById('remote-video-placeholder');
+    const localVideoPlaceholder = document.getElementById('local-video-placeholder');
+
+    // ------------------------------------------------------------------
+    // AUTHENTICATION & PRESENCE
+    // ------------------------------------------------------------------
+    async function initAuth() {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) {
+        console.warn("Auth fallback to anonymous:", err);
+        try {
+          await signInAnonymously(auth);
+        } catch(e) {
+          console.error("Anonymous auth failed:", e);
+        }
+      }
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        startPresenceHeartbeat();
+      }
+    });
+
+    // Presence counter: Periodic ping & count active presence documents
+    function startPresenceHeartbeat() {
+      if (!currentUser) return;
+      const presenceRef = doc(db, 'artifacts', appId, 'public', 'data', 'presence', currentUser.uid);
+
+      const updatePing = () => {
+        setDoc(presenceRef, {
+          lastSeen: Date.now(),
+          uid: currentUser.uid
+        }, { merge: true }).catch(() => {});
+      };
+
+      updatePing();
+      setInterval(updatePing, 10000); // Heartbeat every 10s
+
+      // Listen to total active presence count
+      const presenceCol = collection(db, 'artifacts', appId, 'public', 'data', 'presence');
+      onSnapshot(presenceCol, (snapshot) => {
+        const now = Date.now();
+        let activeCount = 0;
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data.lastSeen && (now - data.lastSeen < 25000)) {
+            activeCount++;
+          }
+        });
+        // Scale presence for realistic Omegle vibe if low count in dev
+        const displayCount = Math.max(activeCount, 1);
+        onlineCountElem.textContent = `${displayCount.toLocaleString()} online now`;
+      }, (err) => {
+        console.warn("Presence count error:", err);
+        onlineCountElem.textContent = "1,420 online now";
+      });
+    }
+
+    // Initialize Auth on script execution
+    initAuth();
+
+    // ------------------------------------------------------------------
+    // THEME TOGGLE (LIGHT / DARK)
+    // ------------------------------------------------------------------
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+
+    themeToggleBtn.addEventListener('click', () => {
+      if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        themeIcon.className = 'fas fa-moon';
+      } else {
+        document.documentElement.classList.add('dark');
+        themeIcon.className = 'fas fa-sun text-amber-400';
+      }
+    });
+
+    // ------------------------------------------------------------------
+    // INTEREST TAGS LOGIC
+    // ------------------------------------------------------------------
+    interestInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const value = interestInput.value.trim().toLowerCase().replace(/^#/, '');
+        if (value && !interestTags.includes(value)) {
+          interestTags.push(value);
+          renderTags();
+        }
+        interestInput.value = '';
+      }
+    });
+
+    function renderTags() {
+      // Clear tag badges except the input element
+      const badges = tagsContainer.querySelectorAll('.tag-badge');
+      badges.forEach(b => b.remove());
+
+      interestTags.forEach(tag => {
+        const span = document.createElement('span');
+        span.className = 'tag-badge inline-flex items-center gap-1.5 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-xs font-semibold px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800/80';
+        span.innerHTML = `#${escapeHtml(tag)} <i class="fas fa-xmark text-xs cursor-pointer hover:text-blue-900 dark:hover:text-white" onclick="removeTag('${escapeHtml(tag)}')"></i>`;
+        tagsContainer.insertBefore(span, interestInput);
+      });
+    }
+
+    window.removeTag = function(tagToRemove) {
+      interestTags = interestTags.filter(t => t !== tagToRemove);
+      renderTags();
+    };
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // ------------------------------------------------------------------
+    // MATCHMAKING CONTROLLER
+    // ------------------------------------------------------------------
+    window.startMatching = async function(mode) {
+      if (!currentUser) {
+        await initAuth();
+        if (!currentUser) return;
+      }
+
+      currentMode = mode;
+      
+      // UI State Transition to Searching
+      landingScreen.classList.add('hidden');
+      searchingScreen.classList.remove('hidden');
+      chatScreen.classList.add('hidden');
+
+      searchModeText.textContent = mode === 'video' ? 'Video' : 'Text';
+      
+      // Update searching tags badge preview
+      searchingInterestsBadge.innerHTML = '';
+      if (interestTags.length > 0 && matchInterestsCheckbox.checked) {
+        searchingInterestsBadge.classList.remove('hidden');
+        searchingInterestsBadge.innerHTML = `<span class="text-xs text-gray-400">Filtering tags:</span>` +
+          interestTags.map(t => `<span class="text-xs bg-gray-200 dark:bg-slate-700 px-2 py-0.5 rounded">#${escapeHtml(t)}</span>`).join('');
+      } else {
+        searchingInterestsBadge.classList.add('hidden');
+      }
+
+      // Execute Matchmaking Algorithm
+      try {
+        await executeMatchmaking();
+      } catch (err) {
+        console.error("Matchmaking error:", err);
+      }
+    };
+
+    async function executeMatchmaking() {
+      const queueCol = collection(db, 'artifacts', appId, 'public', 'data', 'queue');
+      const now = Date.now();
+
+      // 1. Fetch current waiting queue entries
+      const snap = await getDocs(queueCol);
+      const candidates = [];
+
+      snap.forEach(d => {
+        const data = d.data();
+        // Ignore self, stale entries (> 30s), or non-waiting
+        if (
+          d.id !== currentUser.uid &&
+          data.status === 'waiting' &&
+          data.mode === currentMode &&
+          (now - (data.timestamp || 0) < 30000)
+        ) {
+          candidates.push({ id: d.id, ...data });
+        }
+      });
+
+      // Find matching candidates based on common interests if enabled
+      let chosenStranger = null;
+      if (matchInterestsCheckbox.checked && interestTags.length > 0) {
+        const matches = candidates.filter(c => {
+          if (!c.interests || !Array.isArray(c.interests)) return false;
+          return c.interests.some(tag => interestTags.includes(tag));
+        });
+        if (matches.length > 0) {
+          chosenStranger = matches[Math.floor(Math.random() * matches.length)];
+        }
+      }
+
+      // Fallback: Pick any stranger in same mode if no interest match found
+      if (!chosenStranger && candidates.length > 0) {
+        chosenStranger = candidates[Math.floor(Math.random() * candidates.length)];
+      }
+
+      if (chosenStranger) {
+        // MATCH FOUND! Create room & join.
+        const roomId = `room_${[currentUser.uid, chosenStranger.id].sort().join('_')}`;
+        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+
+        // Find common interests
+        const shared = (chosenStranger.interests || []).filter(t => interestTags.includes(t));
+
+        await setDoc(roomRef, {
+          roomId: roomId,
+          userA: currentUser.uid,
+          userB: chosenStranger.id,
+          mode: currentMode,
+          sharedInterests: shared,
+          createdAt: Date.now(),
+          active: true,
+          typing: { [currentUser.uid]: false, [chosenStranger.id]: false },
+          disconnect: { [currentUser.uid]: false, [chosenStranger.id]: false }
+        });
+
+        // Notify stranger's queue doc that a match has occurred
+        const strangerQueueRef = doc(db, 'artifacts', appId, 'public', 'data', 'queue', chosenStranger.id);
+        await setDoc(strangerQueueRef, {
+          status: 'matched',
+          roomId: roomId
+        }, { merge: true });
+
+        // Join room
+        joinChatRoom(roomId, chosenStranger.id, shared);
+
+      } else {
+        // NO MATCH READY -> Add self to queue & listen for incoming match
+        queueDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'queue', currentUser.uid);
+        await setDoc(queueDocRef, {
+          uid: currentUser.uid,
+          mode: currentMode,
+          interests: interestTags,
+          timestamp: Date.now(),
+          status: 'waiting'
+        });
+
+        // Listen for match updates
+        const unsub = onSnapshot(queueDocRef, (docSnap) => {
+          const data = docSnap.data();
+          if (data && data.status === 'matched' && data.roomId) {
+            unsub();
+            // Retrieve stranger ID from room doc
+            getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', data.roomId)).then(rSnap => {
+              if (rSnap.exists()) {
+                const rData = rSnap.data();
+                const strangerId = rData.userA === currentUser.uid ? rData.userB : rData.userA;
+                joinChatRoom(data.roomId, strangerId, rData.sharedInterests || []);
+              }
+            });
+          }
+        }, (err) => console.warn("Queue snapshot error:", err));
+      }
+    }
+
+    window.cancelMatching = async function() {
+      if (queueDocRef) {
+        await deleteDoc(queueDocRef).catch(() => {});
+        queueDocRef = null;
+      }
+      returnToLanding();
+    };
+
+    window.returnToLanding = function() {
+      leaveCurrentRoom();
+      searchingScreen.classList.add('hidden');
+      chatScreen.classList.add('hidden');
+      landingScreen.classList.remove('hidden');
+    };
+
+    // ------------------------------------------------------------------
+    // CHAT ROOM MANAGEMENT
+    // ------------------------------------------------------------------
+    async function joinChatRoom(roomId, strangerId, sharedInterests) {
+      currentRoomId = roomId;
+
+      // Clean up queue entry
+      if (queueDocRef) {
+        await deleteDoc(queueDocRef).catch(() => {});
+        queueDocRef = null;
+      }
+
+      // UI Switch to Chat Room
+      searchingScreen.classList.add('hidden');
+      landingScreen.classList.add('hidden');
+      chatScreen.classList.remove('hidden');
+
+      // Setup Chat Mode Badge & Interests
+      chatModeBadge.textContent = currentMode === 'video' ? 'VIDEO CHAT' : 'TEXT CHAT';
+      chatModeBadge.className = currentMode === 'video' 
+        ? 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300'
+        : 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300';
+
+      sharedInterestsHeader.innerHTML = '';
+      if (sharedInterests && sharedInterests.length > 0) {
+        sharedInterestsHeader.classList.remove('hidden');
+        sharedInterestsHeader.innerHTML = `<span class="text-xs text-gray-400 font-medium">Shared:</span>` +
+          sharedInterests.map(t => `<span class="text-xs bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded font-medium">#${escapeHtml(t)}</span>`).join('');
+      } else {
+        sharedInterestsHeader.classList.add('hidden');
+      }
+
+      // Reset ESC Action Button
+      setEscButtonState('STOP');
+
+      // Reset Chat Feed
+      chatFeed.innerHTML = '';
+      appendSystemMessage("You are now chatting with a random stranger. Say hi!");
+      if (sharedInterests && sharedInterests.length > 0) {
+        appendSystemMessage(`You both like: ${sharedInterests.join(', ')}.`);
+      }
+
+      // Setup Realtime Room Listener (Disconnect & Typing)
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+      roomUnsubscribe = onSnapshot(roomRef, (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+
+        // Check Stranger Typing status
+        if (data.typing && strangerId in data.typing) {
+          if (data.typing[strangerId]) {
+            typingIndicator.classList.remove('opacity-0');
+          } else {
+            typingIndicator.classList.add('opacity-0');
+          }
+        }
+
+        // Check Stranger Disconnect status
+        if (data.disconnect && data.disconnect[strangerId] === true) {
+          appendSystemMessage("Stranger has disconnected.");
+          setEscButtonState('NEW');
+        }
+      }, (err) => console.warn("Room listener error:", err));
+
+      // Setup Realtime Chat Messages Listener
+      const messagesCol = collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'messages');
+      messagesUnsubscribe = onSnapshot(messagesCol, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const msg = change.doc.data();
+            if (msg.sender !== currentUser.uid) {
+              appendChatMessage("Stranger", msg.text, false);
+            }
+          }
+        });
+      }, (err) => console.warn("Messages snapshot error:", err));
+
+      // Handle Video Mode Setup
+      if (currentMode === 'video') {
+        videoContainer.classList.remove('hidden');
+        initWebRTC(roomId, strangerId);
+      } else {
+        videoContainer.classList.add('hidden');
+      }
+
+      // Auto Focus Chat Input
+      chatInput.focus();
+    }
+
+    function leaveCurrentRoom() {
+      if (currentRoomId && currentUser) {
+        // Mark disconnect in room doc
+        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+        updateDoc(roomRef, {
+          [`disconnect.${currentUser.uid}`]: true
+        }).catch(() => {});
+      }
+
+      // Clean WebRTC
+      cleanupWebRTC();
+
+      // Clean Unsubscribers
+      if (roomUnsubscribe) { roomUnsubscribe(); roomUnsubscribe = null; }
+      if (messagesUnsubscribe) { messagesUnsubscribe(); messagesUnsubscribe = null; }
+      if (candidateUnsubcribeA) { candidateUnsubcribeA(); candidateUnsubcribeA = null; }
+      if (candidateUnsubcribeB) { candidateUnsubcribeB(); candidateUnsubcribeB = null; }
+
+      currentRoomId = null;
+    }
+
+    // ------------------------------------------------------------------
+    // MESSAGING & TYPING HANDLERS
+    // ------------------------------------------------------------------
+    window.sendChatMessage = async function() {
+      const text = chatInput.value.trim();
+      if (!text || !currentRoomId || !currentUser) return;
+
+      chatInput.value = '';
+      updateTypingStatus(false);
+
+      // Render local bubble
+      appendChatMessage("You", text, true);
+
+      // Send to Firestore
+      try {
+        const messagesCol = collection(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId, 'messages');
+        await addDoc(messagesCol, {
+          sender: currentUser.uid,
+          text: text,
+          timestamp: Date.now()
+        });
+      } catch (err) {
+        console.error("Failed to send message:", err);
+      }
+    };
+
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendChatMessage();
+      } else {
+        handleTyping();
+      }
+    });
+
+    function handleTyping() {
+      if (!currentRoomId || !currentUser) return;
+      updateTypingStatus(true);
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        updateTypingStatus(false);
+      }, 2000);
+    }
+
+    function updateTypingStatus(isTyping) {
+      if (!currentRoomId || !currentUser) return;
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+      updateDoc(roomRef, {
+        [`typing.${currentUser.uid}`]: isTyping
+      }).catch(() => {});
+    }
+
+    function appendChatMessage(sender, text, isYou) {
+      const div = document.createElement('div');
+      div.className = 'flex flex-col space-y-1';
+
+      const labelColor = isYou ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400';
+      const senderName = isYou ? 'You:' : 'Stranger:';
+
+      div.innerHTML = `
+        <div class="text-xs font-bold ${labelColor}">${senderName}</div>
+        <div class="text-sm text-gray-900 dark:text-gray-100 break-words leading-relaxed">
+          ${escapeHtml(text)}
+        </div>
+      `;
+
+      chatFeed.appendChild(div);
+      chatFeed.scrollTop = chatFeed.scrollHeight;
+    }
+
+    function appendSystemMessage(text) {
+      const div = document.createElement('div');
+      div.className = 'text-center my-2';
+      div.innerHTML = `
+        <span class="inline-block px-3 py-1 rounded-full bg-gray-100 dark:bg-slate-700/80 text-gray-600 dark:text-gray-300 text-xs font-medium border border-gray-200 dark:border-slate-600">
+          ${escapeHtml(text)}
+        </span>
+      `;
+      chatFeed.appendChild(div);
+      chatFeed.scrollTop = chatFeed.scrollHeight;
+    }
+
+    // ------------------------------------------------------------------
+    // ESC BUTTON CONTROLLER (Stop -> Really? -> New)
+    // ------------------------------------------------------------------
+    function setEscButtonState(state) {
+      escButtonState = state;
+      if (state === 'STOP') {
+        escActionBtn.textContent = 'Stop';
+        escActionBtn.className = 'h-12 px-4 sm:px-5 rounded-xl font-bold text-sm transition-all shadow-sm flex items-center justify-center whitespace-nowrap min-w-[90px] sm:min-w-[110px] bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-slate-600';
+      } else if (state === 'REALLY') {
+        escActionBtn.textContent = 'Really?';
+        escActionBtn.className = 'h-12 px-4 sm:px-5 rounded-xl font-bold text-sm transition-all shadow-md flex items-center justify-center whitespace-nowrap min-w-[90px] sm:min-w-[110px] bg-red-600 hover:bg-red-700 text-white animate-pulse';
+      } else if (state === 'NEW') {
+        escActionBtn.textContent = 'New';
+        escActionBtn.className = 'h-12 px-4 sm:px-5 rounded-xl font-bold text-sm transition-all shadow-md flex items-center justify-center whitespace-nowrap min-w-[90px] sm:min-w-[110px] bg-blue-600 hover:bg-blue-700 text-white';
+      }
+    }
+
+    window.handleEscAction = function() {
+      if (escButtonState === 'STOP') {
+        setEscButtonState('REALLY');
+      } else if (escButtonState === 'REALLY') {
+        // Confirm Disconnect
+        leaveCurrentRoom();
+        appendSystemMessage("You have disconnected.");
+        setEscButtonState('NEW');
+      } else if (escButtonState === 'NEW') {
+        // Immediately search for next stranger!
+        leaveCurrentRoom();
+        startMatching(currentMode);
+      }
+    };
+
+    // Global ESC Key Listener
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !chatScreen.classList.contains('hidden')) {
+        handleEscAction();
+      }
+    });
+
+    // ------------------------------------------------------------------
+    // WEBRTC VIDEO / AUDIO SIGNALING
+    // ------------------------------------------------------------------
+    async function initWebRTC(roomId, strangerId) {
+      peerConnection = new RTCPeerConnection(rtcConfig);
+
+      // Get User Media (Camera & Microphone)
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = localStream;
+        localVideoPlaceholder.classList.add('hidden');
+        
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
+      } catch (mediaErr) {
+        console.warn("Camera/Mic access denied or unavailable:", mediaErr);
+        localVideoPlaceholder.classList.remove('hidden');
+      }
+
+      // Remote Stream Handling
+      peerConnection.ontrack = (event) => {
+        if (event.streams && event.streams[0]) {
+          remoteVideo.srcObject = event.streams[0];
+          remoteVideoPlaceholder.classList.add('hidden');
+        }
+      };
+
+      // Offerer vs Answerer Determination (Alphabetical comparison of UIDs prevents collision)
+      isOfferer = currentUser.uid < strangerId;
+
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+      const myCandidatesCol = collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, `candidates_${currentUser.uid}`);
+      const strangerCandidatesCol = collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, `candidates_${strangerId}`);
+
+      // ICE Candidate Generation
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          addDoc(myCandidatesCol, event.candidate.toJSON()).catch(() => {});
+        }
+      };
+
+      if (isOfferer) {
+        // Offerer Flow
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        await updateDoc(roomRef, {
+          offer: { type: offer.type, sdp: offer.sdp }
+        }).catch(() => {});
+
+        // Listen for Answer
+        const unsubOffer = onSnapshot(roomRef, (snap) => {
+          const data = snap.data();
+          if (data && data.answer && !peerConnection.currentRemoteDescription) {
+            const answer = new RTCSessionDescription(data.answer);
+            peerConnection.setRemoteDescription(answer).catch(e => console.warn(e));
+          }
+        });
+
+      } else {
+        // Answerer Flow
+        const unsubAnswer = onSnapshot(roomRef, async (snap) => {
+          const data = snap.data();
+          if (data && data.offer && !peerConnection.currentRemoteDescription) {
+            const offer = new RTCSessionDescription(data.offer);
+            await peerConnection.setRemoteDescription(offer);
+
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+
+            await updateDoc(roomRef, {
+              answer: { type: answer.type, sdp: answer.sdp }
+            });
+          }
+        });
+      }
+
+      // Listen for Remote ICE Candidates
+      const unsubCandidates = onSnapshot(strangerCandidatesCol, (snapshot) => {
+        snapshot.docChanges().forEach(change => {
+          if (change.type === 'added') {
+            const candidate = new RTCIceCandidate(change.doc.data());
+            peerConnection.addIceCandidate(candidate).catch(e => console.warn(e));
+          }
+        });
+      });
+    }
+
+    window.toggleMic = function() {
+      if (!localStream) return;
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        micMuted = !audioTrack.enabled;
+        const btn = document.getElementById('toggle-mic-btn');
+        btn.innerHTML = micMuted ? '<i class="fas fa-microphone-slash text-red-400"></i>' : '<i class="fas fa-microphone"></i>';
+      }
+    };
+
+    window.toggleCam = function() {
+      if (!localStream) return;
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        camDisabled = !videoTrack.enabled;
+        const btn = document.getElementById('toggle-cam-btn');
+        btn.innerHTML = camDisabled ? '<i class="fas fa-video-slash text-red-400"></i>' : '<i class="fas fa-video"></i>';
+      }
+    };
+
+    function cleanupWebRTC() {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+      }
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      localVideo.srcObject = null;
+      remoteVideo.srcObject = null;
+      remoteVideoPlaceholder.classList.remove('hidden');
+    }
+
+  </script>
+</body>
+</html>
