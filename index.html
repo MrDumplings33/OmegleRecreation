@@ -73,7 +73,7 @@
       background: linear-gradient(to bottom, #1a75cf 0%, #1460ad 100%);
     }
 
-    /* Classic Stop/Send Control Button Gradients */
+    /* Classic Control Button Gradients */
     .btn-classic-gray {
       background: linear-gradient(to bottom, #ffffff 0%, #e6ecf2 100%);
       border: 1px solid #b5c7d9;
@@ -142,7 +142,6 @@
       
       <!-- Brand Logo & Tagline -->
       <a href="#" onclick="returnToLanding(); return false;" class="flex items-center gap-2.5 group">
-        <!-- Iconic Omegle Speech Bubbles Mark -->
         <div class="w-8 h-8 relative flex items-center justify-center">
           <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-xs">
             <path d="M 20,45 C 20,25 40,20 60,20 C 80,20 90,35 90,50 C 90,65 75,75 55,75 C 45,75 35,85 25,85 C 30,75 20,65 20,45 Z" fill="#1d75bd"/>
@@ -159,23 +158,27 @@
 
       <!-- Right Header Online Status & Count -->
       <div class="flex items-center gap-3">
-        <!-- Live Connection Status Dot -->
         <div id="connection-pill" class="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded-full text-xs font-semibold text-emerald-800">
           <span id="connection-dot" class="w-2 h-2 rounded-full bg-emerald-500 pulse-dot"></span>
           <span id="connection-text">Online</span>
         </div>
 
-        <!-- Online Users Counter -->
         <div class="text-xs font-semibold text-slate-600">
-          <span id="online-count" class="text-[#1d75bd] font-bold text-sm">NO ONE</span> online right now
+          <span id="online-count" class="text-[#1d75bd] font-bold text-sm">--</span> online right now
         </div>
       </div>
 
     </div>
   </header>
 
-  <!-- MAIN VIEWPORT CONTAINER (Height: calc(100dvh - 56px)) -->
+  <!-- MAIN VIEWPORT CONTAINER -->
   <main class="flex-1 h-[calc(100dvh-56px)] overflow-hidden relative">
+
+    <!-- HTTPS WARNING BANNER FOR NON-SECURE MOBILE CONTEXTS -->
+    <div id="https-warning-banner" class="hidden bg-amber-500 text-slate-950 font-medium text-xs py-1.5 px-4 text-center z-40 border-b border-amber-600 shadow-sm flex items-center justify-center gap-2">
+      <i class="fas fa-triangle-exclamation"></i>
+      <span>Mobile camera access requires <strong>HTTPS</strong> or <strong>localhost</strong>. Text chat remains functional over HTTP LAN.</span>
+    </div>
 
     <!-- 1. CLASSIC HOME / LANDING CARD -->
     <div id="homeScreen" class="h-full flex flex-col justify-center items-center p-4 overflow-y-auto">
@@ -229,12 +232,10 @@
             </label>
 
             <div class="grid grid-cols-2 gap-3 flex-1 items-center">
-              <!-- Text Button -->
               <button onclick="startMatching('text')" class="btn-omegle-gloss h-14 rounded-md font-bold text-base flex flex-col items-center justify-center shadow-xs transition active:scale-[0.98]">
                 <span>Text</span>
               </button>
 
-              <!-- Video Button -->
               <button onclick="startMatching('video')" class="btn-omegle-gloss h-14 rounded-md font-bold text-base flex flex-col items-center justify-center shadow-xs transition active:scale-[0.98]">
                 <span>Video</span>
               </button>
@@ -265,25 +266,38 @@
       </div>
     </div>
 
-    <!-- 3. ACTIVE CHAT SCREEN (STRICT SIDE-BY-SIDE NO-SCROLL LAYOUT) -->
+    <!-- 3. ACTIVE CHAT SCREEN -->
     <div id="chatScreen" class="hidden h-[calc(100dvh-56px)] flex flex-row gap-2.5 p-2 overflow-hidden box-border">
 
       <!-- LEFT COLUMN: STACKED 4:3 CAMERAS (#videoColumn) -->
       <div id="videoColumn" class="hidden">
         
-        <!-- Stranger Video Box (4:3 Uncropped Top Box) -->
+        <!-- Stranger Video Box -->
         <div id="stranger-video-box" class="video-box-43">
           <video id="remote-video" autoplay playsinline></video>
+
+          <!-- Tap to Unmute Overlay for Mobile Autoplay Protection -->
+          <button id="tap-unmute-btn" onclick="unmuteRemoteAudio()" class="hidden absolute inset-0 z-30 bg-black/70 text-white flex flex-col items-center justify-center gap-2 p-3 transition hover:bg-black/80">
+            <i class="fas fa-volume-xmark text-3xl text-amber-400 animate-bounce"></i>
+            <span class="font-bold text-xs bg-amber-500 text-slate-950 px-3 py-1 rounded-full shadow">Tap to Unmute Stranger</span>
+          </button>
+
+          <!-- Placeholder Loading Indicator -->
           <div id="remote-video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-[#141414] text-slate-400 p-2 text-center z-10">
             <i id="remote-status-icon" class="fas fa-circle-notch text-2xl text-[#1d75bd] animate-spin mb-1.5"></i>
             <span id="p2p-status-text" class="font-medium text-xs text-slate-300">Connecting video...</span>
           </div>
-          <div class="absolute top-2 left-2 z-20 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">
-            Stranger
+
+          <!-- Label & Live WebRTC Connection Badge -->
+          <div class="absolute top-2 left-2 z-20 flex items-center gap-1.5">
+            <span class="bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">Stranger</span>
+            <span id="webrtc-type-badge" class="hidden bg-emerald-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-xs">
+              P2P
+            </span>
           </div>
         </div>
 
-        <!-- Local Video Box (4:3 Uncropped Bottom Box) -->
+        <!-- Local Video Box -->
         <div id="local-video-box" class="video-box-43">
           <video id="local-video" autoplay playsinline muted class="transform -scale-x-100"></video>
           <div id="local-video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-[#141414] text-slate-400 p-2 text-center z-10 hidden">
@@ -294,7 +308,7 @@
             You
           </div>
 
-          <!-- Bottom Right Local Camera Controls -->
+          <!-- Local Media Controls -->
           <div class="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-black/70 p-1 rounded">
             <button id="toggle-mic-btn" onclick="toggleMic()" class="w-6 h-6 rounded bg-slate-800 text-white hover:bg-slate-700 transition flex items-center justify-center text-[10px]" title="Mute/Unmute Mic">
               <i class="fas fa-microphone"></i>
@@ -310,10 +324,8 @@
       <!-- RIGHT COLUMN: CHAT PANE (#chatPane) -->
       <div id="chatPane" class="flex-1 min-w-0 h-full flex flex-col gap-2">
 
-        <!-- Top Box: Chat Log Wrapper -->
+        <!-- Chat Log Wrapper -->
         <div id="chatLogWrapper" class="bg-white border border-[#b8c6d4] rounded-md flex-1 min-h-0 flex flex-col overflow-hidden shadow-xs">
-          
-          <!-- Scrollable Log Box -->
           <div id="chatLog" class="flex-1 min-h-0 overflow-y-auto p-3.5 text-[15px] leading-[1.45] space-y-2 bg-white font-sans">
             <div class="text-xs font-bold text-slate-500 my-1">
               You're now chatting with a random stranger. Say hi!
@@ -324,22 +336,21 @@
           <div id="typing-indicator" class="h-6 px-3.5 text-xs italic text-slate-500 flex items-center gap-1.5 opacity-0 transition-opacity bg-white border-t border-slate-100 flex-shrink-0">
             Stranger is typing...
           </div>
-
         </div>
 
-        <!-- Bottom Control Bar (Fixed Height: 68px) -->
+        <!-- Bottom Control Bar -->
         <div class="h-[68px] flex-shrink-0 flex flex-row gap-2">
           
-          <!-- 1. Left Stop / Really? / New Button -->
+          <!-- Stop / Really? / New Button -->
           <button id="esc-action-btn" onclick="handleEscAction()" class="btn-classic-gray w-[112px] h-full rounded-md font-bold text-base flex flex-col items-center justify-center leading-tight whitespace-nowrap flex-shrink-0">
             <span>Stop</span>
             <span class="text-[10px] font-normal opacity-60">Esc</span>
           </button>
 
-          <!-- 2. Middle Message Textarea -->
+          <!-- Textarea Input -->
           <textarea id="chat-input" rows="2" placeholder="Type your message..." class="flex-1 h-full resize-none border border-[#b8c6d4] rounded-md p-2.5 text-[15px] bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#1d75bd]"></textarea>
 
-          <!-- 3. Right Send Button -->
+          <!-- Send Button -->
           <button id="send-msg-btn" onclick="sendChatMessage()" class="btn-classic-gray w-[104px] h-full rounded-md font-bold text-base flex flex-col items-center justify-center leading-tight whitespace-nowrap flex-shrink-0">
             <span>Send</span>
             <span class="text-[10px] font-normal opacity-60">Enter</span>
@@ -355,18 +366,60 @@
 
   <!-- JAVASCRIPT ENGINE -->
   <script>
-    // ------------------------------------------------------------------
-    // 1. SUPABASE CREDENTIALS & STUN CONFIG
-    // ------------------------------------------------------------------
-    let SUPABASE_URL = "https://derqluoclcitoguhapcw.supabase.co";
-    let SUPABASE_ANON_KEY = "sb_publishable_J_FP7NUIxo2k9I-s2xDSdw_9uehwAIE";
+    // ==================================================================
+    // 1. SUPABASE & TURN/STUN CONFIGURATION
+    // ==================================================================
+    const SUPABASE_URL = "https://derqluoclcitoguhapcw.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_J_FP7NUIxo2k9I-s2xDSdw_9uehwAIE";
 
-    const STUN_SERVERS = [
+    // Optional Metered.ca dynamic TURN API
+    const METERED_DOMAIN = "";  // e.g., "your-app.metered.live"
+    const METERED_API_KEY = ""; // e.g., "abcdef123456"
+
+    // Manual TURN Server Credentials (if Metered API is not used)
+    const TURN_URL = "";        // e.g., "turn:relays.example.com:443?transport=tcp"
+    const TURN_USERNAME = "";
+    const TURN_CREDENTIAL = "";
+
+    const PUBLIC_STUN_SERVERS = [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
       { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:stun.cloudflare.com:3478' }
     ];
+
+    async function getIceServers() {
+      let iceServers = [...PUBLIC_STUN_SERVERS];
+
+      if (METERED_DOMAIN && METERED_API_KEY) {
+        try {
+          const res = await fetch(`https://${METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`);
+          if (res.ok) {
+            const fetchedServers = await res.json();
+            if (Array.isArray(fetchedServers) && fetchedServers.length > 0) {
+              return [...fetchedServers, ...PUBLIC_STUN_SERVERS];
+            }
+          }
+        } catch (e) {
+          console.warn("Metered TURN fetch fallback to STUN:", e);
+        }
+      }
+
+      if (TURN_URL && TURN_USERNAME && TURN_CREDENTIAL) {
+        iceServers.unshift({
+          urls: TURN_URL,
+          username: TURN_USERNAME,
+          credential: TURN_CREDENTIAL
+        });
+      }
+
+      return iceServers;
+    }
+
+    // Check HTTPS Secure Context
+    if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      document.getElementById('https-warning-banner').classList.remove('hidden');
+    }
 
     let supabaseClient = null;
     const myUserId = 'usr_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
@@ -381,7 +434,8 @@
     let matchOfferInterval = null;
     let lobbyPollInterval = null;
     let typingTimeout = null;
-    let readySignalInterval = null;
+    let offerRetryInterval = null;
+    let roomReadyInterval = null;
     let reallyTimeout = null;
 
     let lobbyChannel = null;
@@ -390,11 +444,15 @@
 
     let peerConnection = null;
     let localStream = null;
+    let remoteMediaStream = null;
     let micMuted = false;
     let camDisabled = false;
-    let pendingIceCandidates = [];
+
+    let pendingOutgoingIceCandidates = [];
+    let pendingIncomingIceCandidates = [];
     let isRemoteDescriptionSet = false;
     let isInitiator = false;
+    let cachedAnswerSdp = null;
 
     // DOM Elements
     const homeScreen = document.getElementById('homeScreen');
@@ -419,10 +477,12 @@
     const localVideoPlaceholder = document.getElementById('local-video-placeholder');
     const p2pStatusText = document.getElementById('p2p-status-text');
     const remoteStatusIcon = document.getElementById('remote-status-icon');
+    const webrtcTypeBadge = document.getElementById('webrtc-type-badge');
+    const tapUnmuteBtn = document.getElementById('tap-unmute-btn');
 
-    // ------------------------------------------------------------------
-    // 2. SUPABASE INITIALIZATION
-    // ------------------------------------------------------------------
+    // ==================================================================
+    // 2. SUPABASE INITIALIZATION & MESSAGES CLEANUP
+    // ==================================================================
     function initSupabase() {
       try {
         if (SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes("YOUR_SUPABASE")) {
@@ -460,7 +520,7 @@
         const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         await supabaseClient.from('messages').delete().lt('created_at', cutoff24h);
       } catch (e) {
-        // Silently skip if table is not created yet
+        // Table created optionally
       }
     }
 
@@ -474,9 +534,9 @@
       return null;
     }
 
-    // ------------------------------------------------------------------
+    // ==================================================================
     // 3. GLOBAL LOBBY & MATCHMAKING
-    // ------------------------------------------------------------------
+    // ==================================================================
     async function connectLobby() {
       if (!supabaseClient) return;
 
@@ -532,9 +592,9 @@
 
     initSupabase();
 
-    // ------------------------------------------------------------------
+    // ==================================================================
     // 4. INTEREST TAGS HANDLER
-    // ------------------------------------------------------------------
+    // ==================================================================
     interestInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ',') {
         e.preventDefault();
@@ -568,9 +628,9 @@
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    // ------------------------------------------------------------------
+    // ==================================================================
     // 5. MATCHMAKING FLOW
-    // ------------------------------------------------------------------
+    // ==================================================================
     window.startMatching = async function(mode) {
       currentMode = mode;
       appState = 'searching';
@@ -701,9 +761,9 @@
       homeScreen.classList.remove('hidden');
     };
 
-    // ------------------------------------------------------------------
-    // 6. CHAT ROOM ENGINE
-    // ------------------------------------------------------------------
+    // ==================================================================
+    // 6. CHAT ROOM ENGINE & PRESENCE SYNCHRONIZATION
+    // ==================================================================
     async function joinChatRoom(roomId, strangerId, sharedInterests, isInitiatorRole) {
       clearInterval(lobbyPollInterval);
       clearInterval(matchOfferInterval);
@@ -716,6 +776,7 @@
       currentRoomId = roomId;
       strangerUserId = strangerId;
       isInitiator = isInitiatorRole;
+      cachedAnswerSdp = null;
 
       if (lobbyChannel) {
         lobbyChannel.track({
@@ -743,6 +804,8 @@
         p2pStatusText.textContent = "Connecting video...";
         remoteStatusIcon.className = "fas fa-circle-notch text-2xl text-[#1d75bd] animate-spin mb-1.5";
         remoteVideoPlaceholder.classList.remove('hidden');
+        webrtcTypeBadge.classList.add('hidden');
+        tapUnmuteBtn.classList.add('hidden');
       } else {
         videoColumn.classList.add('hidden');
       }
@@ -783,9 +846,21 @@
           }
         });
 
+        roomChannel.on('presence', { event: 'sync' }, () => {
+          const roomState = roomChannel.presenceState();
+          const strangerPresent = Object.keys(roomState).some(k => k === strangerUserId || (roomState[k] && roomState[k][0] && roomState[k][0].userId === strangerUserId));
+          
+          if (strangerPresent && currentMode === 'video') {
+            flushPendingOutgoingIceCandidates();
+            if (isInitiator && (!peerConnection || peerConnection.remoteDescription === null)) {
+              startOfferRetryLoop();
+            }
+          }
+        });
+
         roomChannel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
           leftPresences.forEach(p => {
-            if (p.key === strangerUserId) {
+            if (p.key === strangerUserId || (p.userId && p.userId === strangerUserId)) {
               handleStrangerDisconnect();
             }
           });
@@ -813,11 +888,14 @@
         p2pStatusText.textContent = "Stranger left";
         remoteStatusIcon.className = "fas fa-user-slash text-2xl text-slate-500 mb-1.5";
         remoteVideoPlaceholder.classList.remove('hidden');
+        webrtcTypeBadge.classList.add('hidden');
+        tapUnmuteBtn.classList.add('hidden');
       }
     }
 
     async function leaveCurrentRoom(stopMediaTracks = false) {
-      clearInterval(readySignalInterval);
+      clearInterval(offerRetryInterval);
+      clearInterval(roomReadyInterval);
 
       if (roomChannel) {
         roomChannel.send({
@@ -839,9 +917,9 @@
       strangerUserId = null;
     }
 
-    // ------------------------------------------------------------------
+    // ==================================================================
     // 7. CHAT MESSAGING LOGIC
-    // ------------------------------------------------------------------
+    // ==================================================================
     window.sendChatMessage = async function() {
       const text = chatInput.value.trim();
       if (!text || !currentRoomId) return;
@@ -867,7 +945,7 @@
             content: text
           });
         } catch (err) {
-          // Ignore if table does not exist
+          // Table created optionally
         }
       }
     };
@@ -926,9 +1004,9 @@
       chatLog.scrollTop = chatLog.scrollHeight;
     }
 
-    // ------------------------------------------------------------------
+    // ==================================================================
     // 8. THREE-STATE STOP / REALLY? / NEW BUTTON
-    // ------------------------------------------------------------------
+    // ==================================================================
     function setEscButtonState(state) {
       escButtonState = state;
       clearTimeout(reallyTimeout);
@@ -969,11 +1047,19 @@
       }
     });
 
-    // ------------------------------------------------------------------
-    // 9. WEBRTC ENGINE (UNCROPPED 4:3 CAMERA FIT)
-    // ------------------------------------------------------------------
+    // ==================================================================
+    // 9. BULLETPROOF CROSS-DEVICE WEBRTC ENGINE
+    // ==================================================================
     async function acquireLocalMedia() {
       if (localStream && localStream.active) return localStream;
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        localStream = null;
+        localVideo.srcObject = null;
+        localVideoPlaceholder.classList.remove('hidden');
+        document.getElementById('local-status-text').textContent = "Text mode (No HTTPS)";
+        return null;
+      }
 
       try {
         localStream = await navigator.mediaDevices.getUserMedia({
@@ -1005,16 +1091,20 @@
     }
 
     async function setupWebRTCConnection() {
-      pendingIceCandidates = [];
+      pendingOutgoingIceCandidates = [];
+      pendingIncomingIceCandidates = [];
       isRemoteDescriptionSet = false;
+      cachedAnswerSdp = null;
 
       if (peerConnection) {
         peerConnection.close();
         peerConnection = null;
       }
 
-      peerConnection = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+      const iceServers = await getIceServers();
+      peerConnection = new RTCPeerConnection({ iceServers });
 
+      // Add local media tracks or default receiver transceivers
       if (localStream && localStream.getTracks().length > 0) {
         localStream.getTracks().forEach(track => {
           peerConnection.addTrack(track, localStream);
@@ -1024,74 +1114,88 @@
         peerConnection.addTransceiver('audio', { direction: 'recvonly' });
       }
 
+      // Track incoming video & audio streams into persistent MediaStream
+      remoteMediaStream = new MediaStream();
+      remoteVideo.srcObject = remoteMediaStream;
+
       peerConnection.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          remoteVideo.srcObject = event.streams[0];
-        } else {
-          let st = remoteVideo.srcObject || new MediaStream();
-          st.addTrack(event.track);
-          remoteVideo.srcObject = st;
+        if (event.track) {
+          remoteMediaStream.addTrack(event.track);
         }
-
-        remoteVideo.play().catch(() => {});
-        p2pStatusText.textContent = "Connected";
-        remoteVideoPlaceholder.classList.add('hidden');
-      };
-
-      remoteVideo.onloadedmetadata = () => {
-        remoteVideo.play().catch(() => {});
-        remoteVideoPlaceholder.classList.add('hidden');
+        playRemoteVideoSafely();
       };
 
       peerConnection.onicecandidate = (event) => {
-        if (event.candidate && roomChannel) {
-          roomChannel.send({
-            type: 'broadcast',
-            event: 'webrtc_signal',
-            payload: {
-              senderId: myUserId,
-              signalType: 'candidate',
-              candidate: event.candidate.toJSON()
-            }
-          });
+        if (event.candidate) {
+          const candJson = event.candidate.toJSON();
+          const roomState = roomChannel ? roomChannel.presenceState() : {};
+          const strangerPresent = Object.keys(roomState).some(k => k === strangerUserId || (roomState[k] && roomState[k][0] && roomState[k][0].userId === strangerUserId));
+
+          if (strangerPresent && roomChannel) {
+            roomChannel.send({
+              type: 'broadcast',
+              event: 'webrtc_signal',
+              payload: { senderId: myUserId, signalType: 'candidate', candidate: candJson }
+            }).catch(() => {});
+          } else {
+            pendingOutgoingIceCandidates.push(candJson);
+          }
         }
       };
 
       peerConnection.oniceconnectionstatechange = () => {
         if (!peerConnection) return;
         const state = peerConnection.iceConnectionState;
+        
         if (state === 'connected' || state === 'completed') {
           p2pStatusText.textContent = "Connected";
           remoteVideoPlaceholder.classList.add('hidden');
+          inspectCandidatePairType();
         } else if (state === 'failed') {
+          webrtcTypeBadge.classList.remove('hidden');
+          webrtcTypeBadge.className = "bg-red-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-xs";
+          webrtcTypeBadge.textContent = "NAT Blocked (Need TURN Key)";
           p2pStatusText.textContent = "Reconnecting...";
           peerConnection.restartIce();
         }
       };
 
-      clearInterval(readySignalInterval);
-      const broadcastReady = () => {
-        if (roomChannel && !isRemoteDescriptionSet) {
-          roomChannel.send({
-            type: 'broadcast',
-            event: 'webrtc_signal',
-            payload: { senderId: myUserId, signalType: 'webrtc_ready' }
-          });
-        } else {
-          clearInterval(readySignalInterval);
-        }
-      };
-      broadcastReady();
-      readySignalInterval = setInterval(broadcastReady, 1200);
-
-      if (isInitiator) {
-        await sendWebRTCOffer();
+      // Callee room_ready broadcast loop
+      if (!isInitiator) {
+        clearInterval(roomReadyInterval);
+        const sendRoomReady = () => {
+          if (roomChannel && !isRemoteDescriptionSet) {
+            roomChannel.send({
+              type: 'broadcast',
+              event: 'webrtc_signal',
+              payload: { senderId: myUserId, signalType: 'room_ready' }
+            }).catch(() => {});
+          } else {
+            clearInterval(roomReadyInterval);
+          }
+        };
+        sendRoomReady();
+        roomReadyInterval = setInterval(sendRoomReady, 1200);
       }
     }
 
+    function startOfferRetryLoop() {
+      clearInterval(offerRetryInterval);
+      const triggerOffer = async () => {
+        if (isInitiator && peerConnection && !isRemoteDescriptionSet) {
+          await sendWebRTCOffer();
+        } else {
+          clearInterval(offerRetryInterval);
+        }
+      };
+      triggerOffer();
+      offerRetryInterval = setInterval(triggerOffer, 1500);
+    }
+
     async function sendWebRTCOffer() {
-      if (!peerConnection || peerConnection.signalingState !== 'stable') return;
+      if (!peerConnection) return;
       try {
+        if (peerConnection.signalingState !== 'stable') return;
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
 
@@ -1099,80 +1203,166 @@
           roomChannel.send({
             type: 'broadcast',
             event: 'webrtc_signal',
-            payload: {
-              senderId: myUserId,
-              signalType: 'offer',
-              sdp: offer.sdp
-            }
+            payload: { senderId: myUserId, signalType: 'webrtc_offer', sdp: offer.sdp }
           });
         }
       } catch (err) {
-        console.warn("Offer error:", err);
+        console.warn("Offer generation note:", err);
       }
     }
 
     async function handleWebRTCSignal(data) {
       if (!peerConnection) return;
 
-      if (data.signalType === 'webrtc_ready') {
-        if (isInitiator && peerConnection.signalingState === 'stable' && !isRemoteDescriptionSet) {
-          await sendWebRTCOffer();
+      if (data.signalType === 'room_ready') {
+        if (isInitiator && !isRemoteDescriptionSet) {
+          startOfferRetryLoop();
         }
-      } else if (data.signalType === 'offer') {
+      } else if (data.signalType === 'webrtc_offer') {
         try {
+          // Duplicate offer handling
+          if (isRemoteDescriptionSet && cachedAnswerSdp) {
+            if (roomChannel) {
+              roomChannel.send({
+                type: 'broadcast',
+                event: 'webrtc_signal',
+                payload: { senderId: myUserId, signalType: 'webrtc_answer', sdp: cachedAnswerSdp }
+              });
+            }
+            return;
+          }
+
           if (peerConnection.signalingState !== 'stable') return;
+
           await peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
           isRemoteDescriptionSet = true;
-          await flushPendingIceCandidates();
+          await flushIncomingIceCandidates();
 
           const answer = await peerConnection.createAnswer();
           await peerConnection.setLocalDescription(answer);
+          cachedAnswerSdp = answer.sdp;
 
           if (roomChannel) {
             roomChannel.send({
               type: 'broadcast',
               event: 'webrtc_signal',
-              payload: {
-                senderId: myUserId,
-                signalType: 'answer',
-                sdp: answer.sdp
-              }
+              payload: { senderId: myUserId, signalType: 'webrtc_answer', sdp: answer.sdp }
             });
           }
         } catch (err) {
-          console.warn("Answer creation error:", err);
+          console.warn("Answer creation note:", err);
         }
-      } else if (data.signalType === 'answer') {
+      } else if (data.signalType === 'webrtc_answer') {
         try {
           if (peerConnection.signalingState === 'have-local-offer') {
             await peerConnection.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
             isRemoteDescriptionSet = true;
-            await flushPendingIceCandidates();
+            clearInterval(offerRetryInterval);
+            await flushIncomingIceCandidates();
           }
         } catch (err) {
-          console.warn("Answer handle error:", err);
+          console.warn("Answer handle note:", err);
         }
       } else if (data.signalType === 'candidate' && data.candidate) {
         if (isRemoteDescriptionSet) {
           try {
             await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
           } catch (e) {
-            console.warn("Candidate add error:", e);
+            console.warn("Add ICE candidate note:", e);
           }
         } else {
-          pendingIceCandidates.push(data.candidate);
+          pendingIncomingIceCandidates.push(data.candidate);
         }
       }
     }
 
-    async function flushPendingIceCandidates() {
-      while (pendingIceCandidates.length > 0) {
-        const candidate = pendingIceCandidates.shift();
-        try {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch (e) {
-          console.warn("Flushing ICE candidate note:", e);
+    function flushPendingOutgoingIceCandidates() {
+      while (pendingOutgoingIceCandidates.length > 0) {
+        const cand = pendingOutgoingIceCandidates.shift();
+        if (roomChannel) {
+          roomChannel.send({
+            type: 'broadcast',
+            event: 'webrtc_signal',
+            payload: { senderId: myUserId, signalType: 'candidate', candidate: cand }
+          }).catch(() => {});
         }
+      }
+    }
+
+    async function flushIncomingIceCandidates() {
+      while (pendingIncomingIceCandidates.length > 0) {
+        const cand = pendingIncomingIceCandidates.shift();
+        try {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(cand));
+        } catch (e) {
+          console.warn("Flush incoming candidate note:", e);
+        }
+      }
+    }
+
+    // Mobile Autoplay & Unmute Guarantee
+    async function playRemoteVideoSafely() {
+      remoteVideo.muted = true;
+      try {
+        await remoteVideo.play();
+        remoteVideoPlaceholder.classList.add('hidden');
+
+        // Attempt unmuting audio track
+        remoteVideo.muted = false;
+        const playPromise = remoteVideo.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // Unmuted playback blocked by mobile browser -> fall back to muted + show overlay
+            remoteVideo.muted = true;
+            remoteVideo.play();
+            tapUnmuteBtn.classList.remove('hidden');
+          });
+        }
+      } catch (err) {
+        tapUnmuteBtn.classList.remove('hidden');
+      }
+    }
+
+    window.unmuteRemoteAudio = function() {
+      remoteVideo.muted = false;
+      remoteVideo.play().then(() => {
+        tapUnmuteBtn.classList.add('hidden');
+      }).catch(() => {
+        tapUnmuteBtn.classList.remove('hidden');
+      });
+    };
+
+    // Live WebRTC Candidate Pair Inspection
+    async function inspectCandidatePairType() {
+      if (!peerConnection) return;
+      try {
+        const stats = await peerConnection.getStats();
+        let connectionType = "P2P";
+
+        stats.forEach(report => {
+          if (report.type === 'transport' && report.selectedCandidatePairId) {
+            const pair = stats.get(report.selectedCandidatePairId);
+            if (pair) {
+              const remoteCand = stats.get(pair.remoteCandidateId);
+              if (remoteCand && (remoteCand.candidateType === 'relay' || remoteCand.candidateType === 'srflx')) {
+                connectionType = remoteCand.candidateType === 'relay' ? "Relay" : "P2P";
+              }
+            }
+          }
+        });
+
+        webrtcTypeBadge.classList.remove('hidden');
+        if (connectionType === "Relay") {
+          webrtcTypeBadge.className = "bg-amber-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-xs";
+          webrtcTypeBadge.textContent = "Relay (TURN)";
+        } else {
+          webrtcTypeBadge.className = "bg-emerald-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-xs";
+          webrtcTypeBadge.textContent = "P2P Direct";
+        }
+      } catch (e) {
+        webrtcTypeBadge.classList.remove('hidden');
+        webrtcTypeBadge.className = "bg-emerald-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-xs";
+        webrtcTypeBadge.textContent = "Connected";
       }
     }
 
@@ -1208,7 +1398,8 @@
     };
 
     function cleanupWebRTC(stopTracks = false) {
-      clearInterval(readySignalInterval);
+      clearInterval(offerRetryInterval);
+      clearInterval(roomReadyInterval);
 
       if (stopTracks && localStream) {
         localStream.getTracks().forEach(track => track.stop());
@@ -1221,10 +1412,15 @@
         peerConnection = null;
       }
 
-      pendingIceCandidates = [];
+      pendingOutgoingIceCandidates = [];
+      pendingIncomingIceCandidates = [];
       isRemoteDescriptionSet = false;
+      cachedAnswerSdp = null;
+
       remoteVideo.srcObject = null;
       remoteVideoPlaceholder.classList.remove('hidden');
+      webrtcTypeBadge.classList.add('hidden');
+      tapUnmuteBtn.classList.add('hidden');
       p2pStatusText.textContent = "Connecting video...";
       remoteStatusIcon.className = "fas fa-circle-notch text-2xl text-[#1d75bd] animate-spin mb-1.5";
     }
