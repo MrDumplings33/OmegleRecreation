@@ -4,11 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Omegle: Talk to Strangers!</title>
+  
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Supabase JS v2 Client library -->
+  <!-- Supabase JS v2 Client Library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
@@ -24,20 +25,26 @@
             omegleRed: '#d92626',
             omegleUserBlue: '#1a6ed8',
             omegleBg: '#eef4fa',
-            omegleBorder: '#c8d6e5',
+            omegleBorder: '#b8c6d4',
           }
         }
       }
     }
   </script>
+
   <style>
-    body {
+    /* CRITICAL LAYOUT RULE 1: STRICT ZERO OUTER SCROLLING */
+    html, body {
+      height: 100dvh;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
       background-color: #eef4fa;
       font-family: Arial, Helvetica, sans-serif;
       color: #333333;
     }
 
-    /* Custom Classic Scrollbar */
+    /* Custom Scrollbar for Chat Feed */
     ::-webkit-scrollbar {
       width: 7px;
     }
@@ -50,25 +57,6 @@
     }
     ::-webkit-scrollbar-thumb:hover {
       background: #8faec9;
-    }
-
-    /* 4:3 Natural Aspect Ratio Video Box - No Zoom or Cropping */
-    .video-box-43 {
-      aspect-ratio: 4 / 3;
-      background-color: #141414;
-      border-radius: 6px;
-      overflow: hidden;
-      position: relative;
-      width: 100%;
-      border: 1px solid #b5c7d9;
-      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
-    }
-    .video-box-43 video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain; /* Full uncropped wide camera view */
-      background-color: #141414;
-      display: block;
     }
 
     /* Glossy Classic Omegle Button Gradient */
@@ -114,62 +102,87 @@
       50% { opacity: 0.4; transform: scale(0.95); }
     }
 
-    @media (min-width: 1024px) {
-      .video-sidebar-width {
-        width: clamp(260px, 28vw, 360px);
-      }
+    /* CRITICAL LAYOUT RULE 2: STACKED 4:3 SIDEBAR CAMERAS */
+    #videoColumn {
+      width: min(44vw, calc((100dvh - 82px) * 0.5 * 1.3333));
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .video-box-43 {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      max-height: calc(50% - 4px);
+      background-color: #141414;
+      border: 1px solid #b8c6d4;
+      border-radius: 6px;
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .video-box-43 video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain; /* Full uncropped 4:3 wide camera view */
+      background-color: #141414;
+      display: block;
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="flex flex-col h-screen overflow-hidden">
 
-  <!-- HEADER BAR -->
-  <header class="bg-white border-b border-omegleBorder px-4 py-2.5 shadow-xs sticky top-0 z-30">
-    <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
+  <!-- HEADER BAR (Height: 56px) -->
+  <header class="h-[56px] bg-white border-b border-[#d0dce8] px-4 shadow-xs flex-shrink-0 z-30">
+    <div class="h-full max-w-7xl mx-auto flex items-center justify-between gap-3">
       
       <!-- Brand Logo & Tagline -->
-      <a href="#" onclick="returnToLanding(); return false;" class="flex items-center gap-3 group">
+      <a href="#" onclick="returnToLanding(); return false;" class="flex items-center gap-2.5 group">
         <!-- Iconic Omegle Speech Bubbles Mark -->
-        <div class="w-9 h-9 relative flex items-center justify-center">
+        <div class="w-8 h-8 relative flex items-center justify-center">
           <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-xs">
             <path d="M 20,45 C 20,25 40,20 60,20 C 80,20 90,35 90,50 C 90,65 75,75 55,75 C 45,75 35,85 25,85 C 30,75 20,65 20,45 Z" fill="#1d75bd"/>
             <path d="M 10,55 C 10,40 25,35 40,35 C 55,35 65,45 65,55 C 65,68 55,75 40,75 C 32,75 25,82 18,82 C 21,75 10,68 10,55 Z" fill="#f58220" opacity="0.9"/>
           </svg>
         </div>
         <div class="flex items-baseline gap-2">
-          <span class="font-bold text-2xl tracking-tight text-omegleBlue">
-            omegle<span class="text-omegleOrange">.</span>
+          <span class="font-bold text-2xl tracking-tight text-[#1d75bd]">
+            omegle<span class="text-[#f58220]">.</span>
           </span>
           <span class="text-xs italic font-medium text-slate-500 hidden sm:inline">Talk to strangers!</span>
         </div>
       </a>
 
-      <!-- Right Header Status Pill & Count -->
+      <!-- Right Header Online Status & Count -->
       <div class="flex items-center gap-3">
-        <!-- Supabase Connection Pill -->
-        <button id="connection-pill" onclick="openConfigModal()" class="flex items-center gap-2 bg-amber-50 border border-amber-300 px-3 py-1 rounded-full text-xs font-semibold text-amber-800 hover:bg-amber-100 transition" title="Click to view or edit Supabase API Keys">
-          <span id="connection-dot" class="w-2.5 h-2.5 rounded-full bg-amber-500 pulse-dot"></span>
-          <span id="connection-text">Connecting...</span>
-        </button>
+        <!-- Live Connection Status Dot -->
+        <div id="connection-pill" class="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded-full text-xs font-semibold text-emerald-800">
+          <span id="connection-dot" class="w-2 h-2 rounded-full bg-emerald-500 pulse-dot"></span>
+          <span id="connection-text">Online</span>
+        </div>
 
-        <!-- Classic Online Users Count -->
+        <!-- Online Users Counter -->
         <div class="text-xs font-semibold text-slate-600">
-          <span id="online-count" class="text-omegleBlue font-bold text-sm">32,480+</span> online now
+          <span id="online-count" class="text-[#1d75bd] font-bold text-sm">32,480+</span> online now
         </div>
       </div>
 
     </div>
   </header>
 
-  <!-- MAIN VIEWPORT CONTAINER -->
-  <main class="flex-1 flex flex-col max-w-6xl w-full mx-auto p-3 sm:p-5">
+  <!-- MAIN VIEWPORT CONTAINER (Height: calc(100dvh - 56px)) -->
+  <main class="flex-1 h-[calc(100dvh-56px)] overflow-hidden relative">
 
     <!-- 1. CLASSIC HOME / LANDING CARD -->
-    <div id="landing-screen" class="flex-1 flex flex-col justify-center items-center py-4">
-      <div class="w-full max-w-[700px] bg-white rounded-lg border border-omegleBorder shadow-md p-5 sm:p-7 space-y-5">
+    <div id="homeScreen" class="h-full flex flex-col justify-center items-center p-4 overflow-y-auto">
+      <div class="w-full max-w-[680px] bg-white rounded-lg border border-[#b8c6d4] shadow-md p-6 space-y-5">
 
         <!-- Intro Header -->
-        <div class="space-y-1.5 text-center sm:text-left">
+        <div class="space-y-1.5 text-left">
           <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
             Talk to strangers!
           </h1>
@@ -180,9 +193,9 @@
 
         <!-- Classic Light Blue Monitor Banner -->
         <div class="bg-[#e3f0fc] border border-[#b8d6f5] rounded-md p-3 text-xs text-[#1e5080] font-medium leading-normal flex items-start gap-2.5">
-          <i class="fas fa-shield-halved text-base text-omegleBlue mt-0.5"></i>
+          <i class="fas fa-shield-halved text-base text-[#1d75bd] mt-0.5"></i>
           <div>
-            <strong class="font-bold text-omegleBlue">Video is monitored. Keep it clean!</strong>
+            <strong class="font-bold text-[#1d75bd]">Video is monitored. Keep it clean!</strong>
             <p class="text-[11px] text-slate-600 mt-0.5">Human behavior is uncontrollable. People on Omegle are solely responsible for their conduct.</p>
           </div>
         </div>
@@ -196,14 +209,14 @@
               <span>What do you wanna talk about?</span>
             </label>
 
-            <div id="tags-container" class="flex-1 flex flex-wrap items-center gap-1.5 bg-white border border-[#b5c7d9] rounded-md p-2 min-h-[76px] focus-within:border-omegleBlue transition">
+            <div id="tags-container" class="flex-1 flex flex-wrap items-center gap-1.5 bg-white border border-[#b5c7d9] rounded-md p-2 min-h-[76px] focus-within:border-[#1d75bd] transition">
               <input type="text" id="interest-input" placeholder="Add your interests (optional)" class="flex-1 bg-transparent border-none outline-none text-xs text-slate-800 placeholder-slate-400 min-w-[140px] p-0.5">
             </div>
 
             <div class="flex items-center justify-between text-[11px] text-slate-500">
               <span>Press Enter or comma to add</span>
               <label class="flex items-center gap-1 cursor-pointer">
-                <input type="checkbox" id="match-interests-checkbox" class="rounded text-omegleBlue focus:ring-omegleBlue cursor-pointer" checked>
+                <input type="checkbox" id="match-interests-checkbox" class="rounded text-[#1d75bd] focus:ring-[#1d75bd] cursor-pointer" checked>
                 <span>Prefer matching</span>
               </label>
             </div>
@@ -238,12 +251,12 @@
     </div>
 
     <!-- 2. SEARCHING LOBBY SCREEN -->
-    <div id="searching-screen" class="hidden flex-1 flex flex-col justify-center items-center py-10">
-      <div class="w-full max-w-md bg-white rounded-lg border border-omegleBorder shadow-md p-8 text-center space-y-5">
-        <div class="w-12 h-12 border-4 border-omegleBlue border-t-transparent rounded-full animate-spin mx-auto"></div>
+    <div id="searchingScreen" class="hidden h-full flex flex-col justify-center items-center p-4">
+      <div class="w-full max-w-md bg-white rounded-lg border border-[#b8c6d4] shadow-md p-8 text-center space-y-5">
+        <div class="w-12 h-12 border-4 border-[#1d75bd] border-t-transparent rounded-full animate-spin mx-auto"></div>
         <div class="space-y-1">
           <h2 class="text-base font-bold text-slate-800">Looking for someone you can chat with...</h2>
-          <p id="search-subtext" class="text-xs text-slate-500">Searching in <span id="search-mode-text" class="font-bold text-omegleBlue">Text</span> mode</p>
+          <p id="search-subtext" class="text-xs text-slate-500">Searching in <span id="search-mode-text" class="font-bold text-[#1d75bd]">Text</span> mode</p>
         </div>
         <div id="searching-interests-badge" class="hidden flex flex-wrap justify-center gap-1 text-xs text-slate-500"></div>
         <button onclick="cancelMatching()" class="px-5 py-2 rounded-md border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 transition">
@@ -252,17 +265,17 @@
       </div>
     </div>
 
-    <!-- 3. CLASSIC CHAT & VIDEO VIEW -->
-    <div id="chat-screen" class="hidden flex-1 flex flex-col lg:flex-row gap-4 h-full min-h-[480px]">
+    <!-- 3. ACTIVE CHAT SCREEN (STRICT SIDE-BY-SIDE NO-SCROLL LAYOUT) -->
+    <div id="chatScreen" class="hidden h-[calc(100dvh-56px)] flex flex-row gap-2.5 p-2 overflow-hidden box-border">
 
-      <!-- Left Column: 4:3 Video Boxes (Video Mode Only) -->
-      <div id="video-container" class="hidden w-full video-sidebar-width flex-shrink-0 grid grid-cols-2 lg:flex lg:flex-col gap-3">
+      <!-- LEFT COLUMN: STACKED 4:3 CAMERAS (#videoColumn) -->
+      <div id="videoColumn" class="hidden">
         
-        <!-- Stranger Video Box (4:3 Uncropped Natural View) -->
-        <div id="stranger-video-box" class="video-box-43 shadow-xs">
+        <!-- Stranger Video Box (4:3 Uncropped Top Box) -->
+        <div id="stranger-video-box" class="video-box-43">
           <video id="remote-video" autoplay playsinline></video>
           <div id="remote-video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-[#141414] text-slate-400 p-2 text-center z-10">
-            <i id="remote-status-icon" class="fas fa-circle-notch text-2xl text-omegleBlue animate-spin mb-1.5"></i>
+            <i id="remote-status-icon" class="fas fa-circle-notch text-2xl text-[#1d75bd] animate-spin mb-1.5"></i>
             <span id="p2p-status-text" class="font-medium text-xs text-slate-300">Connecting video...</span>
           </div>
           <div class="absolute top-2 left-2 z-20 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">
@@ -270,8 +283,8 @@
           </div>
         </div>
 
-        <!-- Local Self Video Box (4:3 Uncropped Natural View, Mirrored) -->
-        <div id="local-video-box" class="video-box-43 shadow-xs">
+        <!-- Local Video Box (4:3 Uncropped Bottom Box) -->
+        <div id="local-video-box" class="video-box-43">
           <video id="local-video" autoplay playsinline muted class="transform -scale-x-100"></video>
           <div id="local-video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-[#141414] text-slate-400 p-2 text-center z-10 hidden">
             <i class="fas fa-video-slash text-xl text-slate-500 mb-1"></i>
@@ -281,7 +294,7 @@
             You
           </div>
 
-          <!-- Discrete Corner Controls -->
+          <!-- Bottom Right Local Camera Controls -->
           <div class="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-black/70 p-1 rounded">
             <button id="toggle-mic-btn" onclick="toggleMic()" class="w-6 h-6 rounded bg-slate-800 text-white hover:bg-slate-700 transition flex items-center justify-center text-[10px]" title="Mute/Unmute Mic">
               <i class="fas fa-microphone"></i>
@@ -294,37 +307,40 @@
 
       </div>
 
-      <!-- Right Column: Classic Chat Log & Bottom Controls -->
-      <div class="flex-1 flex flex-col bg-white border border-[#c0cedc] rounded-md shadow-xs overflow-hidden min-h-[420px] h-full">
+      <!-- RIGHT COLUMN: CHAT PANE (#chatPane) -->
+      <div id="chatPane" class="flex-1 min-w-0 h-full flex flex-col gap-2">
 
-        <!-- Chat Feed Panel -->
-        <div id="chat-feed" class="flex-1 p-3 sm:p-4 overflow-y-auto space-y-2.5 text-sm bg-white font-sans">
-          <div class="text-xs font-bold text-slate-500 my-1">
-            You're now chatting with a random stranger. Say hi!
-          </div>
-        </div>
-
-        <!-- Typing Indicator -->
-        <div id="typing-indicator" class="h-5 px-4 text-xs italic text-slate-500 flex items-center gap-1.5 opacity-0 transition-opacity">
-          Stranger is typing...
-        </div>
-
-        <!-- Bottom 3-Part Control Bar -->
-        <div class="p-2.5 bg-[#f4f7fa] border-t border-[#c0cedc] flex items-stretch gap-2">
+        <!-- Top Box: Chat Log Wrapper -->
+        <div id="chatLogWrapper" class="bg-white border border-[#b8c6d4] rounded-md flex-1 min-h-0 flex flex-col overflow-hidden shadow-xs">
           
-          <!-- Left Button: Stop / Really? / New -->
-          <button id="esc-action-btn" onclick="handleEscAction()" class="btn-classic-gray px-3 sm:px-4 rounded-md font-bold text-sm flex flex-col items-center justify-center leading-tight whitespace-nowrap min-w-[95px] sm:min-w-[112px]">
+          <!-- Scrollable Log Box -->
+          <div id="chatLog" class="flex-1 min-h-0 overflow-y-auto p-3.5 text-[15px] leading-[1.45] space-y-2 bg-white font-sans">
+            <div class="text-xs font-bold text-slate-500 my-1">
+              You're now chatting with a random stranger. Say hi!
+            </div>
+          </div>
+
+          <!-- Pinned Typing Indicator -->
+          <div id="typing-indicator" class="h-6 px-3.5 text-xs italic text-slate-500 flex items-center gap-1.5 opacity-0 transition-opacity bg-white border-t border-slate-100 flex-shrink-0">
+            Stranger is typing...
+          </div>
+
+        </div>
+
+        <!-- Bottom Control Bar (Fixed Height: 68px) -->
+        <div class="h-[68px] flex-shrink-0 flex flex-row gap-2">
+          
+          <!-- 1. Left Stop / Really? / New Button -->
+          <button id="esc-action-btn" onclick="handleEscAction()" class="btn-classic-gray w-[112px] h-full rounded-md font-bold text-base flex flex-col items-center justify-center leading-tight whitespace-nowrap flex-shrink-0">
             <span>Stop</span>
             <span class="text-[10px] font-normal opacity-60">Esc</span>
           </button>
 
-          <!-- Center Input Textarea -->
-          <div class="flex-1 relative flex items-center">
-            <textarea id="chat-input" rows="2" placeholder="Type your message here..." class="w-full h-full p-2 text-sm border border-[#b5c7d9] rounded-md bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:border-omegleBlue resize-none"></textarea>
-          </div>
+          <!-- 2. Middle Message Textarea -->
+          <textarea id="chat-input" rows="2" placeholder="Type your message..." class="flex-1 h-full resize-none border border-[#b8c6d4] rounded-md p-2.5 text-[15px] bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#1d75bd]"></textarea>
 
-          <!-- Right Button: Send -->
-          <button id="send-msg-btn" onclick="sendChatMessage()" class="btn-classic-gray px-3 sm:px-4 rounded-md font-bold text-sm flex flex-col items-center justify-center leading-tight whitespace-nowrap min-w-[85px] sm:min-w-[100px]">
+          <!-- 3. Right Send Button -->
+          <button id="send-msg-btn" onclick="sendChatMessage()" class="btn-classic-gray w-[104px] h-full rounded-md font-bold text-base flex flex-col items-center justify-center leading-tight whitespace-nowrap flex-shrink-0">
             <span>Send</span>
             <span class="text-[10px] font-normal opacity-60">Enter</span>
           </button>
@@ -337,40 +353,13 @@
 
   </main>
 
-  <!-- SUPABASE CONFIG MODAL (TRIGGERED ONLY ON CLICKING STATUS PILL IF NEEDED) -->
-  <div id="config-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg border border-omegleBorder shadow-xl max-w-md w-full p-6 space-y-4">
-      <div class="flex items-center justify-between border-b pb-2">
-        <h3 class="font-bold text-base text-slate-900">Supabase Connection Settings</h3>
-        <button onclick="closeConfigModal()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-xmark"></i></button>
-      </div>
-      <p class="text-xs text-slate-600">
-        Enter your Supabase URL and Anon Key to connect live across devices.
-      </p>
-      <div class="space-y-3">
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Supabase URL</label>
-          <input type="text" id="modal-url-input" class="w-full text-xs p-2 border border-slate-300 rounded focus:outline-none focus:border-omegleBlue">
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Supabase Anon Key</label>
-          <input type="password" id="modal-key-input" class="w-full text-xs p-2 border border-slate-300 rounded focus:outline-none focus:border-omegleBlue">
-        </div>
-      </div>
-      <div class="flex justify-end gap-2 pt-2">
-        <button onclick="closeConfigModal()" class="px-4 py-1.5 text-xs font-semibold border rounded text-slate-600 hover:bg-slate-50">Cancel</button>
-        <button onclick="saveModalConfig()" class="btn-omegle-gloss px-4 py-1.5 text-xs font-bold rounded">Save & Connect</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- JAVASCRIPT LOGIC ENGINE -->
+  <!-- JAVASCRIPT ENGINE -->
   <script>
     // ------------------------------------------------------------------
-    // 1. SUPABASE CREDENTIALS & STUN SERVERS
+    // 1. SUPABASE CREDENTIALS & STUN CONFIG
     // ------------------------------------------------------------------
-    let SUPABASE_URL = localStorage.getItem('omegle_supabase_url') || "https://derqluoclcitoguhapcw.supabase.co";
-    let SUPABASE_ANON_KEY = localStorage.getItem('omegle_supabase_key') || "sb_publishable_J_FP7NUIxo2k9I-s2xDSdw_9uehwAIE";
+    let SUPABASE_URL = "https://derqluoclcitoguhapcw.supabase.co";
+    let SUPABASE_ANON_KEY = "sb_publishable_J_FP7NUIxo2k9I-s2xDSdw_9uehwAIE";
 
     const STUN_SERVERS = [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -379,43 +368,7 @@
       { urls: 'stun:stun.cloudflare.com:3478' }
     ];
 
-    const connectionPill = document.getElementById('connection-pill');
-    const connectionDot = document.getElementById('connection-dot');
-    const connectionText = document.getElementById('connection-text');
-
     let supabaseClient = null;
-
-    function updateConnectionStatus(status, label) {
-      if (status === 'connected') {
-        connectionPill.className = "flex items-center gap-2 bg-emerald-50 border border-emerald-300 px-3 py-1 rounded-full text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition";
-        connectionDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 pulse-dot";
-        connectionText.textContent = label || "Online";
-      } else if (status === 'connecting') {
-        connectionPill.className = "flex items-center gap-2 bg-amber-50 border border-amber-300 px-3 py-1 rounded-full text-xs font-semibold text-amber-800 hover:bg-amber-100 transition";
-        connectionDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 pulse-dot";
-        connectionText.textContent = label || "Connecting...";
-      } else {
-        connectionPill.className = "flex items-center gap-2 bg-red-50 border border-red-300 px-3 py-1 rounded-full text-xs font-semibold text-red-800 hover:bg-red-100 transition";
-        connectionDot.className = "w-2.5 h-2.5 rounded-full bg-red-500";
-        connectionText.textContent = label || "Keys Needed";
-      }
-    }
-
-    function initSupabase() {
-      try {
-        if (SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes("YOUR_SUPABASE")) {
-          supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-          updateConnectionStatus('connecting', 'Connecting...');
-          connectLobby();
-        } else {
-          updateConnectionStatus('error', 'Keys Needed');
-        }
-      } catch (e) {
-        console.warn("Supabase init note:", e);
-        updateConnectionStatus('error', 'Connection Error');
-      }
-    }
-
     const myUserId = 'usr_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
 
     let appState = 'idle'; // 'idle' | 'searching' | 'matched'
@@ -424,11 +377,12 @@
     let currentRoomId = null;
     let strangerUserId = null;
     let searchStartTime = 0;
-    
+
     let matchOfferInterval = null;
     let lobbyPollInterval = null;
     let typingTimeout = null;
     let readySignalInterval = null;
+    let reallyTimeout = null;
 
     let lobbyChannel = null;
     let roomChannel = null;
@@ -442,11 +396,11 @@
     let isRemoteDescriptionSet = false;
     let isInitiator = false;
 
-    // DOM References
-    const landingScreen = document.getElementById('landing-screen');
-    const searchingScreen = document.getElementById('searching-screen');
-    const chatScreen = document.getElementById('chat-screen');
-    const videoContainer = document.getElementById('video-container');
+    // DOM Elements
+    const homeScreen = document.getElementById('homeScreen');
+    const searchingScreen = document.getElementById('searchingScreen');
+    const chatScreen = document.getElementById('chatScreen');
+    const videoColumn = document.getElementById('videoColumn');
 
     const interestInput = document.getElementById('interest-input');
     const tagsContainer = document.getElementById('tags-container');
@@ -454,7 +408,7 @@
 
     const searchModeText = document.getElementById('search-mode-text');
     const searchingInterestsBadge = document.getElementById('searching-interests-badge');
-    const chatFeed = document.getElementById('chat-feed');
+    const chatLog = document.getElementById('chatLog');
     const chatInput = document.getElementById('chat-input');
     const typingIndicator = document.getElementById('typing-indicator');
     const escActionBtn = document.getElementById('esc-action-btn');
@@ -467,59 +421,61 @@
     const remoteStatusIcon = document.getElementById('remote-status-icon');
 
     // ------------------------------------------------------------------
-    // 2. CONFIG MODAL HELPERS
+    // 2. SUPABASE INITIALIZATION
     // ------------------------------------------------------------------
-    window.openConfigModal = function() {
-      document.getElementById('modal-url-input').value = SUPABASE_URL.includes("YOUR_SUPABASE") ? "" : SUPABASE_URL;
-      document.getElementById('modal-key-input').value = SUPABASE_ANON_KEY.includes("YOUR_SUPABASE") ? "" : SUPABASE_ANON_KEY;
-      document.getElementById('config-modal').classList.remove('hidden');
-    };
-
-    window.closeConfigModal = function() {
-      document.getElementById('config-modal').classList.add('hidden');
-    };
-
-    window.saveModalConfig = function() {
-      const u = document.getElementById('modal-url-input').value.trim();
-      const k = document.getElementById('modal-key-input').value.trim();
-      if (u && k) {
-        localStorage.setItem('omegle_supabase_url', u);
-        localStorage.setItem('omegle_supabase_key', k);
-        SUPABASE_URL = u;
-        SUPABASE_ANON_KEY = k;
-        closeConfigModal();
-        initSupabase();
+    function initSupabase() {
+      try {
+        if (SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes("YOUR_SUPABASE")) {
+          supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          updateConnectionStatus(true, 'Online');
+          connectLobby();
+          cleanupOldMessages();
+        } else {
+          updateConnectionStatus(false, 'Offline (Keys)');
+        }
+      } catch (e) {
+        console.warn("Supabase init note:", e);
+        updateConnectionStatus(false, 'Offline');
       }
-    };
+    }
+
+    function updateConnectionStatus(isOnline, text) {
+      const pill = document.getElementById('connection-pill');
+      const dot = document.getElementById('connection-dot');
+      const label = document.getElementById('connection-text');
+
+      if (isOnline) {
+        pill.className = "flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded-full text-xs font-semibold text-emerald-800";
+        dot.className = "w-2 h-2 rounded-full bg-emerald-500 pulse-dot";
+      } else {
+        pill.className = "flex items-center gap-1.5 bg-red-50 border border-red-300 px-2.5 py-0.5 rounded-full text-xs font-semibold text-red-800";
+        dot.className = "w-2 h-2 rounded-full bg-red-500";
+      }
+      label.textContent = text;
+    }
+
+    async function cleanupOldMessages() {
+      if (!supabaseClient) return;
+      try {
+        const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        await supabaseClient.from('messages').delete().lt('created_at', cutoff24h);
+      } catch (e) {
+        // Silently skip if table is not created yet
+      }
+    }
 
     async function safeRemoveChannel(channel) {
       if (!channel || !supabaseClient) return null;
       try {
         await supabaseClient.removeChannel(channel);
-      } catch (err) {
-        console.warn("Safe channel remove note:", err);
+      } catch (e) {
+        console.warn("Safe remove channel note:", e);
       }
       return null;
     }
 
     // ------------------------------------------------------------------
-    // 3. 24-HOUR AUTO-DELETE CLEANUP
-    // ------------------------------------------------------------------
-    async function cleanupOldMessages() {
-      if (!supabaseClient) return;
-      try {
-        const cutoffTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        await supabaseClient
-          .from('messages')
-          .delete()
-          .lt('created_at', cutoffTime);
-      } catch (err) {
-        console.warn("24-hour cleanup note:", err);
-      }
-    }
-
-    // ------------------------------------------------------------------
-    // 4. GLOBAL LOBBY & MATCHMAKING
+    // 3. GLOBAL LOBBY & MATCHMAKING
     // ------------------------------------------------------------------
     async function connectLobby() {
       if (!supabaseClient) return;
@@ -529,7 +485,7 @@
       });
 
       lobbyChannel.on('presence', { event: 'sync' }, () => {
-        updateConnectionStatus('connected', 'Online');
+        updateConnectionStatus(true, 'Online');
         const state = lobbyChannel.presenceState();
         const count = Object.keys(state).length;
         document.getElementById('online-count').textContent = `${(count + 32480).toLocaleString()}+`;
@@ -564,7 +520,7 @@
 
       lobbyChannel.subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          updateConnectionStatus('connected', 'Online');
+          updateConnectionStatus(true, 'Online');
           lobbyChannel.track({
             userId: myUserId,
             status: 'idle',
@@ -577,7 +533,7 @@
     initSupabase();
 
     // ------------------------------------------------------------------
-    // 5. INTEREST TAGS HANDLER
+    // 4. INTEREST TAGS HANDLER
     // ------------------------------------------------------------------
     interestInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ',') {
@@ -613,14 +569,14 @@
     }
 
     // ------------------------------------------------------------------
-    // 6. MATCHMAKING FLOW
+    // 5. MATCHMAKING FLOW
     // ------------------------------------------------------------------
     window.startMatching = async function(mode) {
       currentMode = mode;
       appState = 'searching';
       searchStartTime = Date.now();
       
-      landingScreen.classList.add('hidden');
+      homeScreen.classList.add('hidden');
       searchingScreen.classList.remove('hidden');
       chatScreen.classList.add('hidden');
 
@@ -742,11 +698,11 @@
       appState = 'idle';
       searchingScreen.classList.add('hidden');
       chatScreen.classList.add('hidden');
-      landingScreen.classList.remove('hidden');
+      homeScreen.classList.remove('hidden');
     };
 
     // ------------------------------------------------------------------
-    // 7. CHAT ROOM ENGINE & MESSAGES
+    // 6. CHAT ROOM ENGINE
     // ------------------------------------------------------------------
     async function joinChatRoom(roomId, strangerId, sharedInterests, isInitiatorRole) {
       clearInterval(lobbyPollInterval);
@@ -771,24 +727,24 @@
       }
 
       searchingScreen.classList.add('hidden');
-      landingScreen.classList.add('hidden');
+      homeScreen.classList.add('hidden');
       chatScreen.classList.remove('hidden');
 
       setEscButtonState('STOP');
 
-      chatFeed.innerHTML = '';
+      chatLog.innerHTML = '';
       appendSystemMessage("You're now chatting with a random stranger. Say hi!");
       if (sharedInterests && sharedInterests.length > 0) {
         appendSystemMessage(`You both like: ${sharedInterests.join(', ')}.`);
       }
 
       if (currentMode === 'video') {
-        videoContainer.classList.remove('hidden');
+        videoColumn.classList.remove('hidden');
         p2pStatusText.textContent = "Connecting video...";
-        remoteStatusIcon.className = "fas fa-circle-notch text-2xl text-omegleBlue animate-spin mb-1.5";
+        remoteStatusIcon.className = "fas fa-circle-notch text-2xl text-[#1d75bd] animate-spin mb-1.5";
         remoteVideoPlaceholder.classList.remove('hidden');
       } else {
-        videoContainer.classList.add('hidden');
+        videoColumn.classList.add('hidden');
       }
 
       if (supabaseClient) {
@@ -884,7 +840,7 @@
     }
 
     // ------------------------------------------------------------------
-    // 8. CHAT MESSAGING CONTROLLER
+    // 7. CHAT MESSAGING LOGIC
     // ------------------------------------------------------------------
     window.sendChatMessage = async function() {
       const text = chatInput.value.trim();
@@ -911,7 +867,7 @@
             content: text
           });
         } catch (err) {
-          console.warn("DB insert note:", err);
+          // Ignore if table does not exist
         }
       }
     };
@@ -945,45 +901,51 @@
       const div = document.createElement('div');
       div.className = 'leading-snug';
 
-      const labelColor = isYou ? 'text-omegleUserBlue font-bold' : 'text-omegleRed font-bold';
+      const labelColor = isYou ? 'text-[#1a6ed8] font-bold' : 'text-[#d92626] font-bold';
       const senderName = isYou ? 'You:' : 'Stranger:';
 
       div.innerHTML = `<span class="${labelColor}">${senderName}</span> <span class="text-slate-900 font-sans">${escapeHtml(text)}</span>`;
 
-      chatFeed.appendChild(div);
-      chatFeed.scrollTop = chatFeed.scrollHeight;
+      chatLog.appendChild(div);
+      chatLog.scrollTop = chatLog.scrollHeight;
     }
 
     function appendSystemMessage(text) {
       const div = document.createElement('div');
       div.className = 'text-xs font-bold text-slate-500 my-1';
       div.textContent = text;
-      chatFeed.appendChild(div);
-      chatFeed.scrollTop = chatFeed.scrollHeight;
+      chatLog.appendChild(div);
+      chatLog.scrollTop = chatLog.scrollHeight;
     }
 
     function appendInlineNewButton() {
       const div = document.createElement('div');
       div.className = 'my-2';
       div.innerHTML = `<button onclick="handleEscAction()" class="btn-omegle-gloss px-4 py-1.5 rounded text-xs font-bold shadow-xs">Start a new conversation</button>`;
-      chatFeed.appendChild(div);
-      chatFeed.scrollTop = chatFeed.scrollHeight;
+      chatLog.appendChild(div);
+      chatLog.scrollTop = chatLog.scrollHeight;
     }
 
     // ------------------------------------------------------------------
-    // 9. THREE-STATE STOP / REALLY? / NEW CONTROLLER
+    // 8. THREE-STATE STOP / REALLY? / NEW BUTTON
     // ------------------------------------------------------------------
     function setEscButtonState(state) {
       escButtonState = state;
+      clearTimeout(reallyTimeout);
+
       if (state === 'STOP') {
         escActionBtn.innerHTML = `<span>Stop</span><span class="text-[10px] font-normal opacity-60">Esc</span>`;
-        escActionBtn.className = 'btn-classic-gray px-3 sm:px-4 rounded-md font-bold text-sm flex flex-col items-center justify-center leading-tight whitespace-nowrap min-w-[95px] sm:min-w-[112px]';
+        escActionBtn.className = 'btn-classic-gray w-[112px] h-full rounded-md font-bold text-base flex flex-col items-center justify-center leading-tight whitespace-nowrap flex-shrink-0';
       } else if (state === 'REALLY') {
         escActionBtn.innerHTML = `<span>Really?</span><span class="text-[10px] font-normal opacity-80">Esc</span>`;
-        escActionBtn.className = 'btn-classic-really px-3 sm:px-4 rounded-md font-bold text-sm flex flex-col items-center justify-center leading-tight whitespace-nowrap min-w-[95px] sm:min-w-[112px] animate-pulse';
+        escActionBtn.className = 'btn-classic-really w-[112px] h-full rounded-md font-bold text-base flex flex-col items-center justify-center leading-tight whitespace-nowrap flex-shrink-0 animate-pulse';
+        
+        reallyTimeout = setTimeout(() => {
+          if (escButtonState === 'REALLY') setEscButtonState('STOP');
+        }, 3000);
       } else if (state === 'NEW') {
         escActionBtn.innerHTML = `<span>New</span><span class="text-[10px] font-normal opacity-80">Esc</span>`;
-        escActionBtn.className = 'btn-classic-new px-3 sm:px-4 rounded-md font-bold text-sm flex flex-col items-center justify-center leading-tight whitespace-nowrap min-w-[95px] sm:min-w-[112px]';
+        escActionBtn.className = 'btn-classic-new w-[112px] h-full rounded-md font-bold text-base flex flex-col items-center justify-center leading-tight whitespace-nowrap flex-shrink-0';
       }
     }
 
@@ -1008,13 +970,12 @@
     });
 
     // ------------------------------------------------------------------
-    // 10. WEBRTC ENGINE (NATURAL 4:3 CAMERA & UNCROPPED FIT)
+    // 9. WEBRTC ENGINE (UNCROPPED 4:3 CAMERA FIT)
     // ------------------------------------------------------------------
     async function acquireLocalMedia() {
       if (localStream && localStream.active) return localStream;
 
       try {
-        // Natural 4:3 resolution configuration to prevent wide face zooming
         localStream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
           audio: true
@@ -1022,13 +983,11 @@
         localVideo.srcObject = localStream;
         localVideoPlaceholder.classList.add('hidden');
       } catch (err1) {
-        console.warn("4:3 getUserMedia failed, trying default:", err1);
         try {
           localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
           localVideo.srcObject = localStream;
           localVideoPlaceholder.classList.add('hidden');
         } catch (err2) {
-          console.warn("Fallback audio-only:", err2);
           try {
             localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
             localVideo.srcObject = null;
@@ -1267,7 +1226,7 @@
       remoteVideo.srcObject = null;
       remoteVideoPlaceholder.classList.remove('hidden');
       p2pStatusText.textContent = "Connecting video...";
-      remoteStatusIcon.className = "fas fa-circle-notch text-2xl text-omegleBlue animate-spin mb-1.5";
+      remoteStatusIcon.className = "fas fa-circle-notch text-2xl text-[#1d75bd] animate-spin mb-1.5";
     }
   </script>
 </body>
