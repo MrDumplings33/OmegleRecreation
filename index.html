@@ -52,13 +52,15 @@
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.4; transform: scale(0.95); }
     }
+
     /* Strict 1:1 Aspect Ratio Box Styling */
     .square-video-box {
       aspect-ratio: 1 / 1;
       overflow: hidden;
       border-radius: 12px;
-      background-color: #0f172a;
+      background-color: #111111;
       position: relative;
+      width: 100%;
     }
     .square-video-box video {
       width: 100%;
@@ -66,13 +68,20 @@
       object-fit: cover;
       display: block;
     }
+
+    /* Desktop Video Layout Clamp */
+    @media (min-width: 1024px) {
+      .video-sidebar {
+        width: clamp(210px, 34vh, 330px);
+      }
+    }
   </style>
 </head>
 <body class="bg-gray-100 dark:bg-slate-900 text-gray-800 dark:text-gray-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
 
   <!-- HEADER -->
   <header class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-30 px-4 py-3 shadow-xs">
-    <div class="max-w-6xl mx-auto flex items-center justify-between">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-2">
       <!-- Logo & Wordmark -->
       <a href="#" onclick="returnToLanding(); return false;" class="flex items-center gap-2.5 group">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-display font-black text-2xl shadow-md group-hover:scale-105 transition-transform">
@@ -86,12 +95,19 @@
         </div>
       </a>
 
-      <!-- Center Online Presence Counter -->
-      <div class="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 px-3.5 py-1.5 rounded-full shadow-xs">
-        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 pulse-dot"></span>
-        <span id="online-count" class="font-bold text-xs sm:text-sm text-blue-700 dark:text-blue-300">
-          1 online
-        </span>
+      <!-- Center Status & Presence Pill -->
+      <div class="flex items-center gap-2">
+        <!-- Supabase Connection Pill -->
+        <div id="connection-pill" class="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-3 py-1.5 rounded-full shadow-xs text-xs font-semibold text-amber-700 dark:text-amber-300">
+          <span id="connection-dot" class="w-2.5 h-2.5 rounded-full bg-amber-500 pulse-dot"></span>
+          <span id="connection-text">Connecting...</span>
+        </div>
+
+        <!-- Online Presence Counter -->
+        <div class="hidden sm:flex items-center gap-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 px-3.5 py-1.5 rounded-full shadow-xs text-xs font-bold text-blue-700 dark:text-blue-300">
+          <i class="fas fa-users text-blue-500"></i>
+          <span id="online-count">1 online</span>
+        </div>
       </div>
 
       <!-- Right Actions: Theme Toggle -->
@@ -203,8 +219,8 @@
     <!-- 3. CHAT ROOM SCREEN -->
     <div id="chat-screen" class="hidden flex-1 flex flex-col lg:flex-row gap-4 h-full min-h-[500px]">
       
-      <!-- Video Container: Desktop Left Sidebar (min(360px, calc((100vh - 116px) / 2))) & Mobile Top Grid (2 Cols) -->
-      <div id="video-container" class="hidden w-full md:w-full lg:w-[min(360px,calc((100vh-140px)/2))] flex-shrink-0 grid grid-cols-2 lg:flex lg:flex-col gap-3">
+      <!-- Video Sidebar Layout: Desktop Left Sidebar (clamp width) & Mobile 2-Column Grid (1:1 Squares) -->
+      <div id="video-container" class="hidden w-full video-sidebar flex-shrink-0 grid grid-cols-2 lg:flex lg:flex-col gap-3">
         
         <!-- Stranger Video Box (Strict 1:1 Square) -->
         <div id="stranger-video-box" class="square-video-box border border-gray-200 dark:border-slate-700 shadow-md">
@@ -223,19 +239,22 @@
           <video id="local-video" autoplay playsinline muted class="w-full h-full object-cover transform -scale-x-100"></video>
           <div id="local-video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 text-gray-400 p-3 text-center z-10 hidden">
             <i class="fas fa-video-slash text-2xl text-slate-500 mb-1"></i>
-            <span id="local-status-text" class="text-xs text-gray-300">Camera preview off</span>
+            <span id="local-status-text" class="text-xs text-gray-300">Camera off</span>
           </div>
           <div class="absolute top-2.5 left-2.5 z-20 bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1 rounded-md flex items-center gap-1.5 shadow-sm">
             <span class="w-2 h-2 rounded-full bg-emerald-500"></span> You (Local)
           </div>
           
           <!-- Media Toggle Controls -->
-          <div class="absolute bottom-2.5 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-2 bg-slate-950/80 backdrop-blur-md p-1 rounded-xl border border-slate-700/60 shadow-lg">
-            <button id="toggle-mic-btn" onclick="toggleMic()" class="w-8 h-8 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition flex items-center justify-center text-xs" title="Mute/Unmute Mic">
+          <div class="absolute bottom-2.5 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md p-1 rounded-xl border border-slate-700/60 shadow-lg">
+            <button id="toggle-mic-btn" onclick="toggleMic()" class="w-7 h-7 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition flex items-center justify-center text-xs" title="Mute/Unmute Mic">
               <i class="fas fa-microphone"></i>
             </button>
-            <button id="toggle-cam-btn" onclick="toggleCam()" class="w-8 h-8 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition flex items-center justify-center text-xs" title="Turn Camera On/Off">
+            <button id="toggle-cam-btn" onclick="toggleCam()" class="w-7 h-7 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition flex items-center justify-center text-xs" title="Turn Camera On/Off">
               <i class="fas fa-video"></i>
+            </button>
+            <button id="flip-cam-btn" onclick="flipCam()" class="w-7 h-7 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition flex items-center justify-center text-xs" title="Flip Facing Camera">
+              <i class="fas fa-camera-rotate"></i>
             </button>
           </div>
         </div>
@@ -300,42 +319,74 @@
   <!-- JAVASCRIPT APP & WEBRTC ENGINE -->
   <script>
     // ------------------------------------------------------------------
-    // 1. SUPABASE CONFIGURATION
+    // 1. SUPABASE CONFIGURATION & PUBLIC STUN SERVERS
     // ------------------------------------------------------------------
-    const SUPABASE_URL = "https://YOUR_SUPABASE_PROJECT_ID.supabase.co";
-    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+    const SUPABASE_URL = "https://derqluoclcitoguhapcw.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_J_FP7NUIxo2k9I-s2xDSdw_9uehwAIE";
 
-    // Public STUN Servers for fast, reliable NAT traversal
     const STUN_SERVERS = [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
       { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun.cloudflare.com:3478' },
-      { urls: 'stun:global.stun.twilio.com:3478' }
+      { urls: 'stun:stun.cloudflare.com:3478' }
     ];
 
-    // Initialize Supabase Client
+    // Status Pill Elements
+    const connectionPill = document.getElementById('connection-pill');
+    const connectionDot = document.getElementById('connection-dot');
+    const connectionText = document.getElementById('connection-text');
+    const onlineCountElem = document.getElementById('online-count');
+
+    // Initialize Supabase Client & Connection Indicator
     let supabaseClient = null;
+    let isSupabaseConnected = false;
+
+    function updateConnectionStatus(status, label) {
+      if (status === 'connected') {
+        isSupabaseConnected = true;
+        connectionPill.className = "flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 px-3 py-1.5 rounded-full shadow-xs text-xs font-semibold text-emerald-700 dark:text-emerald-300";
+        connectionDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 pulse-dot";
+        connectionText.textContent = label || "Online";
+      } else if (status === 'connecting') {
+        isSupabaseConnected = false;
+        connectionPill.className = "flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-3 py-1.5 rounded-full shadow-xs text-xs font-semibold text-amber-700 dark:text-amber-300";
+        connectionDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 pulse-dot";
+        connectionText.textContent = label || "Connecting...";
+      } else {
+        isSupabaseConnected = false;
+        connectionPill.className = "flex items-center gap-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 px-3 py-1.5 rounded-full shadow-xs text-xs font-semibold text-red-700 dark:text-red-300";
+        connectionDot.className = "w-2.5 h-2.5 rounded-full bg-red-500";
+        connectionText.textContent = label || "Keys Needed";
+      }
+    }
+
     try {
-      if (SUPABASE_URL && !SUPABASE_URL.includes("YOUR_SUPABASE_PROJECT")) {
+      if (SUPABASE_URL && !SUPABASE_URL.includes("YOUR_SUPABASE")) {
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        updateConnectionStatus('connecting', 'Connecting...');
+      } else {
+        updateConnectionStatus('error', 'Keys Needed');
       }
     } catch (e) {
-      console.warn("Supabase init note:", e);
+      console.warn("Supabase init error:", e);
+      updateConnectionStatus('error', 'Connection Error');
     }
 
     // Generate unique random anonymous user ID per browser session
     const myUserId = 'usr_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
 
-    // Global App State
+    // Global App State Machine
+    let appState = 'idle'; // 'idle' | 'searching' | 'matched'
     let interestTags = [];
     let currentMode = 'text'; // 'text' | 'video'
     let currentRoomId = null;
     let strangerUserId = null;
-    let matchCheckInterval = null;
-    let searchTimeout = null;
+    let searchStartTime = 0;
+    
+    let matchOfferInterval = null;
+    let lobbyPollInterval = null;
     let typingTimeout = null;
-    let offerRetryTimeout = null;
+    let readySignalInterval = null;
 
     // Supabase Channels
     let lobbyChannel = null;
@@ -347,12 +398,12 @@
     // WebRTC Peer Connection & Stream State
     let peerConnection = null;
     let localStream = null;
-    let remoteStream = null;
     let micMuted = false;
     let camDisabled = false;
+    let facingMode = 'user';
     let pendingIceCandidates = [];
     let isRemoteDescriptionSet = false;
-    let isOfferSender = false;
+    let isInitiator = false;
 
     // ------------------------------------------------------------------
     // DOM ELEMENTS
@@ -365,7 +416,6 @@
     const interestInput = document.getElementById('interest-input');
     const tagsContainer = document.getElementById('tags-container');
     const matchInterestsCheckbox = document.getElementById('match-interests-checkbox');
-    const onlineCountElem = document.getElementById('online-count');
 
     const searchModeText = document.getElementById('search-mode-text');
     const searchingInterestsBadge = document.getElementById('searching-interests-badge');
@@ -383,6 +433,17 @@
     const p2pStatusText = document.getElementById('p2p-status-text');
     const remoteStatusIcon = document.getElementById('remote-status-icon');
     const localStatusText = document.getElementById('local-status-text');
+
+    // Safe Channel Cleanup Helper
+    async function safeRemoveChannel(channel) {
+      if (!channel || !supabaseClient) return null;
+      try {
+        await supabaseClient.removeChannel(channel);
+      } catch (err) {
+        console.warn("Safe channel remove note:", err);
+      }
+      return null;
+    }
 
     // ------------------------------------------------------------------
     // 2. 24-HOUR AUTO-DELETE MESSAGES FUNCTION
@@ -403,42 +464,62 @@
     cleanupOldMessages();
 
     // ------------------------------------------------------------------
-    // 3. GLOBAL LOBBY & PRESENCE MATCHMAKING
+    // 3. GLOBAL LOBBY & PRESENCE CONNECTION
     // ------------------------------------------------------------------
-    function connectLobby() {
-      if (!supabaseClient) {
-        onlineCountElem.textContent = "1 online";
-        return;
-      }
+    async function connectLobby() {
+      if (!supabaseClient) return;
 
       lobbyChannel = supabaseClient.channel('omegle-global-lobby', {
         config: { presence: { key: myUserId } }
       });
 
       lobbyChannel.on('presence', { event: 'sync' }, () => {
+        updateConnectionStatus('connected', 'Online');
         const state = lobbyChannel.presenceState();
         const totalUsers = Object.keys(state).length;
         onlineCountElem.textContent = `${totalUsers.toLocaleString()} online`;
 
-        if (!searchingScreen.classList.contains('hidden')) {
+        if (appState === 'searching') {
           evaluateMatchmaking(state);
         }
       });
 
-      lobbyChannel.on('broadcast', { event: 'match_found' }, (payload) => {
+      // Match offer listener
+      lobbyChannel.on('broadcast', { event: 'match_offer' }, (payload) => {
         const data = payload.payload;
-        if (data.to === myUserId) {
-          joinChatRoom(data.roomId, data.from, data.sharedInterests || [], false);
+        if (data.to === myUserId && (appState === 'searching' || (appState === 'matched' && currentRoomId === data.roomId))) {
+          // Accept offer, send match_ack, enter room as responder
+          lobbyChannel.send({
+            type: 'broadcast',
+            event: 'match_ack',
+            payload: { roomId: data.roomId, from: myUserId, to: data.from }
+          }).catch(() => {});
+
+          if (appState === 'searching') {
+            joinChatRoom(data.roomId, data.from, data.sharedInterests || [], false);
+          }
+        }
+      });
+
+      // Match ack listener (Initiator side)
+      lobbyChannel.on('broadcast', { event: 'match_ack' }, (payload) => {
+        const data = payload.payload;
+        if (data.to === myUserId && appState === 'searching') {
+          clearInterval(matchOfferInterval);
+          joinChatRoom(data.roomId, data.from, data.sharedInterests || [], true);
         }
       });
 
       lobbyChannel.subscribe((status) => {
         if (status === 'SUBSCRIBED') {
+          updateConnectionStatus('connected', 'Online');
           lobbyChannel.track({
             userId: myUserId,
             status: 'idle',
             joinedAt: Date.now()
           });
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          updateConnectionStatus('error', 'Connection Error');
         }
       });
     }
@@ -482,10 +563,12 @@
     }
 
     // ------------------------------------------------------------------
-    // 5. MATCHMAKING CONTROLLER
+    // 5. BULLETPROOF TWO-WAY MATCHMAKING CONTROLLER
     // ------------------------------------------------------------------
-    window.startMatching = function(mode) {
+    window.startMatching = async function(mode) {
       currentMode = mode;
+      appState = 'searching';
+      searchStartTime = Date.now();
       
       landingScreen.classList.add('hidden');
       searchingScreen.classList.remove('hidden');
@@ -502,6 +585,15 @@
         searchingInterestsBadge.classList.add('hidden');
       }
 
+      if (!supabaseClient) {
+        appendSystemMessage("Supabase credentials missing. Replace SUPABASE_URL and SUPABASE_ANON_KEY to connect live.");
+      }
+
+      // Pre-acquire camera feed for video mode so it's ready immediately
+      if (currentMode === 'video') {
+        await acquireLocalMedia();
+      }
+
       if (lobbyChannel) {
         lobbyChannel.track({
           userId: myUserId,
@@ -514,23 +606,16 @@
         evaluateMatchmaking(lobbyChannel.presenceState());
       }
 
-      clearInterval(matchCheckInterval);
-      matchCheckInterval = setInterval(() => {
-        if (!searchingScreen.classList.contains('hidden') && lobbyChannel) {
+      clearInterval(lobbyPollInterval);
+      lobbyPollInterval = setInterval(() => {
+        if (appState === 'searching' && lobbyChannel) {
           evaluateMatchmaking(lobbyChannel.presenceState());
         }
       }, 1200);
-
-      clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => {
-        if (!searchingScreen.classList.contains('hidden') && lobbyChannel) {
-          evaluateMatchmaking(lobbyChannel.presenceState(), true);
-        }
-      }, 3000);
     };
 
-    function evaluateMatchmaking(presenceState, forceAnyPeer = false) {
-      if (searchingScreen.classList.contains('hidden')) return;
+    function evaluateMatchmaking(presenceState) {
+      if (appState !== 'searching') return;
 
       const candidates = [];
       Object.keys(presenceState).forEach(key => {
@@ -545,10 +630,12 @@
 
       if (candidates.length === 0) return;
 
+      const elapsed = Date.now() - searchStartTime;
       let chosenPeer = null;
       let shared = [];
 
-      if (matchInterestsCheckbox.checked && interestTags.length > 0 && !forceAnyPeer) {
+      // Priority 1: Match shared interests during first 4 seconds
+      if (matchInterestsCheckbox.checked && interestTags.length > 0 && elapsed < 4000) {
         const matchedPeers = candidates.filter(c => {
           if (!c.interests || !Array.isArray(c.interests)) return false;
           const common = c.interests.filter(t => interestTags.includes(t));
@@ -561,39 +648,56 @@
         }
       }
 
-      if (!chosenPeer && (forceAnyPeer || interestTags.length === 0 || !matchInterestsCheckbox.checked)) {
+      // Priority 2: Fall back to any peer after 4s or if no tag filter
+      if (!chosenPeer) {
         chosenPeer = candidates[Math.floor(Math.random() * candidates.length)];
+        if (chosenPeer.interests && Array.isArray(chosenPeer.interests)) {
+          shared = chosenPeer.interests.filter(t => interestTags.includes(t));
+        }
       }
 
+      // Deterministic handshake: Lexicographical smaller ID acts as offer sender
       if (chosenPeer && myUserId < chosenPeer.userId) {
         const roomId = 'room_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
         
-        lobbyChannel.send({
-          type: 'broadcast',
-          event: 'match_found',
-          payload: {
-            from: myUserId,
-            to: chosenPeer.userId,
-            roomId: roomId,
-            sharedInterests: shared
+        clearInterval(matchOfferInterval);
+        const sendOffer = () => {
+          if (appState !== 'searching' && currentRoomId !== roomId) {
+            clearInterval(matchOfferInterval);
+            return;
           }
-        });
+          if (lobbyChannel) {
+            lobbyChannel.send({
+              type: 'broadcast',
+              event: 'match_offer',
+              payload: {
+                from: myUserId,
+                to: chosenPeer.userId,
+                roomId: roomId,
+                sharedInterests: shared
+              }
+            });
+          }
+        };
 
-        joinChatRoom(roomId, chosenPeer.userId, shared, true);
+        sendOffer();
+        matchOfferInterval = setInterval(sendOffer, 1200);
       }
     }
 
     window.cancelMatching = function() {
-      clearInterval(matchCheckInterval);
-      clearTimeout(searchTimeout);
+      clearInterval(lobbyPollInterval);
+      clearInterval(matchOfferInterval);
+      appState = 'idle';
       if (lobbyChannel) {
         lobbyChannel.track({ userId: myUserId, status: 'idle', joinedAt: Date.now() });
       }
       returnToLanding();
     };
 
-    window.returnToLanding = function() {
-      leaveCurrentRoom();
+    window.returnToLanding = async function() {
+      await leaveCurrentRoom(true); // stop media tracks on exit to home
+      appState = 'idle';
       searchingScreen.classList.add('hidden');
       chatScreen.classList.add('hidden');
       landingScreen.classList.remove('hidden');
@@ -602,18 +706,24 @@
     // ------------------------------------------------------------------
     // 6. CHAT ROOM & MESSAGING LOGIC
     // ------------------------------------------------------------------
-    async function joinChatRoom(roomId, strangerId, sharedInterests, isInitiator) {
-      clearInterval(matchCheckInterval);
-      clearTimeout(searchTimeout);
+    async function joinChatRoom(roomId, strangerId, sharedInterests, isInitiatorRole) {
+      clearInterval(lobbyPollInterval);
+      clearInterval(matchOfferInterval);
 
+      // Clean up any existing room channel before subscribing to new one
+      if (roomChannel) {
+        roomChannel = await safeRemoveChannel(roomChannel);
+      }
+
+      appState = 'matched';
       currentRoomId = roomId;
       strangerUserId = strangerId;
-      isOfferSender = isInitiator;
+      isInitiator = isInitiatorRole;
 
       if (lobbyChannel) {
         lobbyChannel.track({
           userId: myUserId,
-          status: 'chatting',
+          status: 'busy',
           roomId: roomId,
           joinedAt: Date.now()
         });
@@ -647,14 +757,14 @@
 
       if (currentMode === 'video') {
         videoContainer.classList.remove('hidden');
-        p2pStatusText.textContent = "Initializing video...";
+        p2pStatusText.textContent = "Connecting video...";
         remoteStatusIcon.className = "fas fa-circle-notch text-3xl text-blue-500 animate-spin mb-2";
         remoteVideoPlaceholder.classList.remove('hidden');
       } else {
         videoContainer.classList.add('hidden');
       }
 
-      // Configure room channel with broadcast self: false and presence tracking
+      // Configure room channel with broadcast self: false
       if (supabaseClient) {
         roomChannel = supabaseClient.channel(`omegle-room-${roomId}`, {
           config: {
@@ -663,7 +773,6 @@
           }
         });
 
-        // Chat message listener
         roomChannel.on('broadcast', { event: 'chat_message' }, (payload) => {
           const msg = payload.payload;
           if (msg.senderId !== myUserId) {
@@ -671,7 +780,6 @@
           }
         });
 
-        // Typing status listener
         roomChannel.on('broadcast', { event: 'typing' }, (payload) => {
           const data = payload.payload;
           if (data.senderId !== myUserId) {
@@ -680,7 +788,6 @@
           }
         });
 
-        // Disconnect listener
         roomChannel.on('broadcast', { event: 'leave_room' }, (payload) => {
           if (payload.payload.senderId !== myUserId) {
             appendSystemMessage("Stranger has disconnected.");
@@ -693,27 +800,11 @@
           }
         });
 
-        // WebRTC Signaling Listener
         roomChannel.on('broadcast', { event: 'webrtc_signal' }, (payload) => {
           const data = payload.payload;
           if (data.senderId !== myUserId) {
             handleWebRTCSignal(data);
           }
-        });
-
-        // Presence listener
-        roomChannel.on('presence', { event: 'sync' }, () => {
-          const state = roomChannel.presenceState();
-          // Check if stranger has marked videoReady
-          Object.keys(state).forEach(k => {
-            const presences = state[k];
-            if (Array.isArray(presences) && presences.length > 0) {
-              const p = presences[0];
-              if (p.userId !== myUserId && p.videoReady && isOfferSender && peerConnection && peerConnection.signalingState === 'stable' && !isRemoteDescriptionSet) {
-                sendWebRTCOffer();
-              }
-            }
-          });
         });
 
         roomChannel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
@@ -735,7 +826,7 @@
             roomChannel.track({ userId: myUserId, joinedAt: Date.now() });
 
             if (currentMode === 'video') {
-              await setupWebRTCAndHandshake(isInitiator);
+              await setupWebRTCConnection();
             }
           }
         });
@@ -744,8 +835,8 @@
       chatInput.focus();
     }
 
-    function leaveCurrentRoom() {
-      clearTimeout(offerRetryTimeout);
+    async function leaveCurrentRoom(stopMediaTracks = false) {
+      clearInterval(readySignalInterval);
 
       if (roomChannel) {
         roomChannel.send({
@@ -754,11 +845,10 @@
           payload: { senderId: myUserId }
         }).catch(() => {});
 
-        roomChannel.unsubscribe();
-        roomChannel = null;
+        roomChannel = await safeRemoveChannel(roomChannel);
       }
 
-      cleanupWebRTC();
+      cleanupWebRTC(stopMediaTracks);
 
       if (lobbyChannel) {
         lobbyChannel.track({ userId: myUserId, status: 'idle', joinedAt: Date.now() });
@@ -873,15 +963,15 @@
       }
     }
 
-    window.handleEscAction = function() {
+    window.handleEscAction = async function() {
       if (escButtonState === 'STOP') {
         setEscButtonState('REALLY');
       } else if (escButtonState === 'REALLY') {
-        leaveCurrentRoom();
+        await leaveCurrentRoom(false); // keep local camera stream active for next stranger
         appendSystemMessage("You have disconnected.");
         setEscButtonState('NEW');
       } else if (escButtonState === 'NEW') {
-        leaveCurrentRoom();
+        await leaveCurrentRoom(false); // keep local camera stream active
         startMatching(currentMode);
       }
     };
@@ -893,41 +983,56 @@
     });
 
     // ------------------------------------------------------------------
-    // 9. WEBRTC P2P ENGINE (WITH STRICT ASPECT-RATIO 1:1 SQUARES)
+    // 9. WEBRTC P2P ENGINE (PERSISTENT LOCAL STREAM & 1:1 RATIO)
     // ------------------------------------------------------------------
-    async function setupWebRTCAndHandshake(isInitiator) {
-      pendingIceCandidates = [];
-      isRemoteDescriptionSet = false;
-      remoteStream = new MediaStream();
+    async function acquireLocalMedia() {
+      if (localStream && localStream.active) return localStream;
 
-      // Create Peer Connection
-      peerConnection = new RTCPeerConnection({ iceServers: STUN_SERVERS });
-
-      // 1. Media Track Acquisition with Fallback for dual-tab PC testing or missing webcam
       try {
         localStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 720 }, height: { ideal: 720 }, aspectRatio: { ideal: 1 } },
+          video: { width: { ideal: 720 }, height: { ideal: 720 }, facingMode: facingMode },
           audio: true
         });
         localVideo.srcObject = localStream;
         localVideoPlaceholder.classList.add('hidden');
       } catch (err1) {
-        console.warn("Full video+audio getUserMedia failed, trying audio-only:", err1);
+        console.warn("Primary 720p getUserMedia failed, trying default video/audio:", err1);
         try {
-          localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-          localVideo.srcObject = null;
-          localVideoPlaceholder.classList.remove('hidden');
-          localStatusText.textContent = "Mic active (Camera in use/unavailable)";
+          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          localVideo.srcObject = localStream;
+          localVideoPlaceholder.classList.add('hidden');
         } catch (err2) {
-          console.warn("Audio getUserMedia also failed, receiving only:", err2);
-          localStream = null;
-          localVideo.srcObject = null;
-          localVideoPlaceholder.classList.remove('hidden');
-          localStatusText.textContent = "Receiving media only";
+          console.warn("Video/audio getUserMedia failed, trying audio-only:", err2);
+          try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+            localVideo.srcObject = null;
+            localVideoPlaceholder.classList.remove('hidden');
+            localStatusText.textContent = "Mic active (Camera unavailable)";
+          } catch (err3) {
+            console.warn("Audio getUserMedia failed, fallback to receiver-only:", err3);
+            localStream = null;
+            localVideo.srcObject = null;
+            localVideoPlaceholder.classList.remove('hidden');
+            localStatusText.textContent = "Receiving media only";
+          }
         }
       }
+      return localStream;
+    }
 
-      // 2. Attach local tracks OR add transceivers so receiving works regardless
+    async function setupWebRTCConnection() {
+      pendingIceCandidates = [];
+      isRemoteDescriptionSet = false;
+
+      // Close previous RTCPeerConnection if lingering
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+
+      peerConnection = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+
+      // 1. Attach persistent local tracks or add transceivers
       if (localStream && localStream.getTracks().length > 0) {
         localStream.getTracks().forEach(track => {
           peerConnection.addTrack(track, localStream);
@@ -937,13 +1042,14 @@
         peerConnection.addTransceiver('audio', { direction: 'recvonly' });
       }
 
-      // 3. Track Receiver Handler
+      // 2. Track Receiver Handler
       peerConnection.ontrack = (event) => {
         if (event.streams && event.streams[0]) {
           remoteVideo.srcObject = event.streams[0];
         } else {
-          remoteStream.addTrack(event.track);
-          remoteVideo.srcObject = remoteStream;
+          let st = remoteVideo.srcObject || new MediaStream();
+          st.addTrack(event.track);
+          remoteVideo.srcObject = st;
         }
 
         remoteVideo.play().catch(() => {});
@@ -951,7 +1057,6 @@
         remoteVideoPlaceholder.classList.add('hidden');
       };
 
-      // Video element loadedmetadata / playing listeners
       remoteVideo.onloadedmetadata = () => {
         remoteVideo.play().catch(() => {});
         remoteVideoPlaceholder.classList.add('hidden');
@@ -960,7 +1065,7 @@
         remoteVideoPlaceholder.classList.add('hidden');
       };
 
-      // 4. ICE Candidate Generator
+      // 3. ICE Candidate Generator
       peerConnection.onicecandidate = (event) => {
         if (event.candidate && roomChannel) {
           roomChannel.send({
@@ -975,7 +1080,7 @@
         }
       };
 
-      // 5. Connection State & Auto Ice Restart
+      // 4. ICE Connection State Watcher & Auto-Restart
       peerConnection.oniceconnectionstatechange = () => {
         if (!peerConnection) return;
         const state = peerConnection.iceConnectionState;
@@ -988,36 +1093,25 @@
         }
       };
 
-      // 6. Broadcast WEBRTC_READY signal & update presence
-      if (roomChannel) {
-        roomChannel.send({
-          type: 'broadcast',
-          event: 'webrtc_signal',
-          payload: { senderId: myUserId, signalType: 'webrtc_ready' }
-        });
+      // 5. Broadcast WEBRTC_READY signal periodically until offer/answer starts
+      clearInterval(readySignalInterval);
+      const broadcastReady = () => {
+        if (roomChannel && !isRemoteDescriptionSet) {
+          roomChannel.send({
+            type: 'broadcast',
+            event: 'webrtc_signal',
+            payload: { senderId: myUserId, signalType: 'webrtc_ready' }
+          });
+        } else {
+          clearInterval(readySignalInterval);
+        }
+      };
+      broadcastReady();
+      readySignalInterval = setInterval(broadcastReady, 1200);
 
-        roomChannel.track({
-          userId: myUserId,
-          videoReady: true,
-          joinedAt: Date.now()
-        });
-      }
-
-      // If initiator, send offer
+      // If initiator, send WebRTC Offer
       if (isInitiator) {
-        sendWebRTCOffer();
-      } else {
-        // Callee fallback safety: re-request offer if not received in 2.5s
-        clearTimeout(offerRetryTimeout);
-        offerRetryTimeout = setTimeout(() => {
-          if (peerConnection && !isRemoteDescriptionSet && roomChannel) {
-            roomChannel.send({
-              type: 'broadcast',
-              event: 'webrtc_signal',
-              payload: { senderId: myUserId, signalType: 'request_offer' }
-            });
-          }
-        }, 2500);
+        await sendWebRTCOffer();
       }
     }
 
@@ -1039,7 +1133,7 @@
           });
         }
       } catch (err) {
-        console.warn("Error creating offer:", err);
+        console.warn("Error creating WebRTC offer:", err);
       }
     }
 
@@ -1047,12 +1141,8 @@
       if (!peerConnection) return;
 
       if (data.signalType === 'webrtc_ready') {
-        if (isOfferSender && peerConnection.signalingState === 'stable' && !isRemoteDescriptionSet) {
-          sendWebRTCOffer();
-        }
-      } else if (data.signalType === 'request_offer') {
-        if (isOfferSender) {
-          sendWebRTCOffer();
+        if (isInitiator && peerConnection.signalingState === 'stable' && !isRemoteDescriptionSet) {
+          await sendWebRTCOffer();
         }
       } else if (data.signalType === 'offer') {
         try {
@@ -1076,7 +1166,7 @@
             });
           }
         } catch (err) {
-          console.warn("Error handling offer:", err);
+          console.warn("Error handling WebRTC offer:", err);
         }
       } else if (data.signalType === 'answer') {
         try {
@@ -1086,7 +1176,7 @@
             await flushPendingIceCandidates();
           }
         } catch (err) {
-          console.warn("Error handling answer:", err);
+          console.warn("Error handling WebRTC answer:", err);
         }
       } else if (data.signalType === 'candidate' && data.candidate) {
         if (isRemoteDescriptionSet) {
@@ -1143,23 +1233,42 @@
       }
     };
 
-    function cleanupWebRTC() {
-      clearTimeout(offerRetryTimeout);
+    window.flipCam = async function() {
+      facingMode = (facingMode === 'user') ? 'environment' : 'user';
       if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
+        localStream.getTracks().forEach(t => t.stop());
         localStream = null;
       }
+      await acquireLocalMedia();
+      if (peerConnection && localStream) {
+        const videoTrack = localStream.getVideoTracks()[0];
+        const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender && videoTrack) {
+          sender.replaceTrack(videoTrack);
+        }
+      }
+    };
+
+    function cleanupWebRTC(stopTracks = false) {
+      clearInterval(readySignalInterval);
+
+      if (stopTracks && localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+        localVideo.srcObject = null;
+      }
+
       if (peerConnection) {
         peerConnection.close();
         peerConnection = null;
       }
+
       pendingIceCandidates = [];
       isRemoteDescriptionSet = false;
-      isOfferSender = false;
-      localVideo.srcObject = null;
       remoteVideo.srcObject = null;
       remoteVideoPlaceholder.classList.remove('hidden');
-      localVideoPlaceholder.classList.add('hidden');
+      p2pStatusText.textContent = "Connecting video...";
+      remoteStatusIcon.className = "fas fa-circle-notch text-3xl text-blue-500 animate-spin mb-2";
     }
 
     // ------------------------------------------------------------------
