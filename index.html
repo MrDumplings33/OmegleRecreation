@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Omegle: Talk to Strangers!</title>
+  <title>Omegle: Talk to Strangers! (Reimagined)</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -21,11 +21,11 @@
           },
           colors: {
             omegleBlue: '#1d75bd',
-            omegleOrange: '#f58220',
-            omegleRed: '#d92626',
-            omegleUserBlue: '#1a6ed8',
-            omegleBg: '#eef4fa',
-            omegleBorder: '#b8c6d4',
+            Orange: '#f58220',
+            Red: '#d92626',
+            UserBlue: '#1a6ed8',
+            Bg: '#eef4fa',
+            Border: '#b8c6d4',
           }
         }
       }
@@ -59,17 +59,17 @@
       background: #8faec9;
     }
 
-    /* Glossy Classic Omegle Button Gradient */
-    .btn-omegle-gloss {
+    /* Glossy Classic  Button Gradient */
+    .btn--gloss {
       background: linear-gradient(to bottom, #4da6ff 0%, #1a75cf 100%);
       border: 1px solid #1460ad;
       color: #ffffff;
       text-shadow: 0 1px 1px rgba(0,0,0,0.3);
     }
-    .btn-omegle-gloss:hover {
+    .btn--gloss:hover {
       background: linear-gradient(to bottom, #5cb0ff 0%, #2080e5 100%);
     }
-    .btn-omegle-gloss:active {
+    .btn--gloss:active {
       background: linear-gradient(to bottom, #1a75cf 0%, #1460ad 100%);
     }
 
@@ -150,7 +150,7 @@
         </div>
         <div class="flex items-baseline gap-2">
           <span class="font-bold text-2xl tracking-tight text-[#1d75bd]">
-            omegle<span class="text-[#f58220]">.</span>
+            Omegle (Reimagined)<span class="text-[#f58220]">.</span>
           </span>
           <span class="text-xs italic font-medium text-slate-500 hidden sm:inline">Talk to strangers!</span>
         </div>
@@ -219,7 +219,7 @@
             <div class="flex items-center justify-between text-[11px] text-slate-500">
               <span>Press Enter or comma to add</span>
               <label class="flex items-center gap-1 cursor-pointer">
-                <input type="checkbox" id="match-interests-checkbox" class="rounded text-[#1d75bd] focus:ring-[#1d75bd] cursor-pointer" checked>
+                <input type="checkbox" id="match-interests-checkbox" class="rounded text-[#1d75bd] focus:ring-[#1d75bd] cursor-pointer" unchecked>
                 <span>Prefer matching</span>
               </label>
             </div>
