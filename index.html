@@ -439,6 +439,11 @@
     let strangerUserId = null;
     let searchStartTime = 0;
 
+    // Matchmaking lock so presence updates don't overwrite an active match offer
+    let pendingOfferPeerId = null;
+    let pendingOfferRoomId = null;
+    let pendingOfferTimestamp = 0;
+
     let matchOfferInterval = null;
     let lobbyPollInterval = null;
     let typingTimeout = null;
@@ -451,16 +456,21 @@
     let escButtonState = 'STOP';
 
     let peerConnection = null;
+    let isPeerConnectionReady = false;
     let localStream = null;
     let remoteMediaStream = null;
     let micMuted = false;
     let camDisabled = false;
 
     let pendingOutgoingIceCandidates = [];
+    let allLocalIceCandidates = [];
     let pendingIncomingIceCandidates = [];
+    let queuedIncomingSignals = [];
     let isRemoteDescriptionSet = false;
     let strangerInRoom = false;
+    let cachedOfferSdp = null;
     let cachedAnswerSdp = null;
+    let isPlayingRemote = false;
 
     // DOM Elements
     const homeScreen = document.getElementById('homeScreen');
@@ -599,6 +609,8 @@
         const data = payload.payload;
         if (data.to === myUserId && appState === 'searching') {
           clearInterval(matchOfferInterval);
+          pendingOfferPeerId = null;
+          pendingOfferRoomId = null;
           joinChatRoom(data.roomId, data.from, data.sharedInterests || []);
         }
       });
@@ -660,6 +672,8 @@
       currentMode = mode;
       appState = 'searching';
       searchStartTime = Date.now();
+      pendingOfferPeerId = null;
+      pendingOfferRoomId = null;
       
       homeScreen.classList.add('hidden');
       searchingScreen.classList.remove('hidden');
@@ -698,11 +712,19 @@
         if (appState === 'searching' && lobbyChannel) {
           evaluateMatchmaking(lobbyChannel.presenceState());
         }
-      }, 1200);
+      }, 1000);
     };
 
     function evaluateMatchmaking(presenceState) {
       if (appState !== 'searching') return;
+
+      // Keep offering the existing room if we already initiated an offer within the last 5 seconds
+      if (pendingOfferPeerId && pendingOfferRoomId && (Date.now() - pendingOfferTimestamp < 5000)) {
+        return;
+      }
+
+      pendingOfferPeerId = null;
+      pendingOfferRoomId = null;
 
       const candidates = [];
       Object.keys(presenceState).forEach(key => {
@@ -743,6 +765,9 @@
 
       if (chosenPeer && myUserId < chosenPeer.userId) {
         const roomId = 'room_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
+        pendingOfferPeerId = chosenPeer.userId;
+        pendingOfferRoomId = roomId;
+        pendingOfferTimestamp = Date.now();
         
         clearInterval(matchOfferInterval);
         const sendOffer = () => {
@@ -760,18 +785,20 @@
                 roomId: roomId,
                 sharedInterests: shared
               }
-            });
+            }).catch(() => {});
           }
         };
 
         sendOffer();
-        matchOfferInterval = setInterval(sendOffer, 1200);
+        matchOfferInterval = setInterval(sendOffer, 800);
       }
     }
 
     window.cancelMatching = function() {
       clearInterval(lobbyPollInterval);
       clearInterval(matchOfferInterval);
+      pendingOfferPeerId = null;
+      pendingOfferRoomId = null;
       appState = 'idle';
       if (lobbyChannel) {
         lobbyChannel.track({ userId: myUserId, status: 'idle', joinedAt: Date.now() });
@@ -793,6 +820,8 @@
     async function joinChatRoom(roomId, strangerId, sharedInterests) {
       clearInterval(lobbyPollInterval);
       clearInterval(matchOfferInterval);
+      pendingOfferPeerId = null;
+      pendingOfferRoomId = null;
 
       if (roomChannel) {
         roomChannel = await safeRemoveChannel(roomChannel);
@@ -801,8 +830,10 @@
       appState = 'matched';
       currentRoomId = roomId;
       strangerUserId = strangerId;
+      cachedOfferSdp = null;
       cachedAnswerSdp = null;
       strangerInRoom = false;
+      queuedIncomingSignals = [];
 
       rtcLog(`Joining room: ${roomId} | Stranger: ${strangerId} | Am I Caller: ${isCaller()}`);
 
@@ -829,10 +860,13 @@
 
       if (currentMode === 'video') {
         videoColumn.classList.remove('hidden');
-        updateStatusBadge("Joining room...", "connecting");
+        updateStatusBadge("Initializing video...", "connecting");
         remoteVideoPlaceholder.classList.remove('hidden');
         webrtcTypeBadge.classList.add('hidden');
         tapUnmuteBtn.classList.add('hidden');
+
+        // Initialize RTCPeerConnection BEFORE subscribing so incoming signals are never missed
+        await setupWebRTCConnection();
       } else {
         videoColumn.classList.add('hidden');
       }
@@ -867,7 +901,11 @@
         roomChannel.on('broadcast', { event: 'webrtc_signal' }, (payload) => {
           const data = payload.payload;
           if (data.senderId !== myUserId) {
-            handleWebRTCSignal(data);
+            if (!isPeerConnectionReady) {
+              queuedIncomingSignals.push(data);
+            } else {
+              handleWebRTCSignal(data);
+            }
           }
         });
 
@@ -877,7 +915,6 @@
 
             if (currentMode === 'video') {
               updateStatusBadge("Waiting for stranger...", "connecting");
-              await setupWebRTCConnection();
               startPeerHelloLoop();
 
               if (isCaller()) {
@@ -905,15 +942,18 @@
         }
       };
       sendHello();
-      peerHelloInterval = setInterval(sendHello, 800);
+      peerHelloInterval = setInterval(sendHello, 700);
     }
 
     function handleStrangerDisconnect() {
       rtcLog("Stranger disconnected event received");
+      clearInterval(offerRetryInterval);
+      clearInterval(peerHelloInterval);
       appendSystemMessage("Stranger has disconnected.");
       appendInlineNewButton();
       setEscButtonState('NEW');
       if (currentMode === 'video') {
+        remoteVideo.srcObject = null;
         updateStatusBadge("Stranger left", "failed");
         remoteStatusIcon.className = "fas fa-user-slash text-2xl text-slate-500 mb-1.5";
         remoteVideoPlaceholder.classList.remove('hidden');
@@ -1121,10 +1161,14 @@
     }
 
     async function setupWebRTCConnection() {
+      isPeerConnectionReady = false;
       pendingOutgoingIceCandidates = [];
+      allLocalIceCandidates = [];
       pendingIncomingIceCandidates = [];
       isRemoteDescriptionSet = false;
+      cachedOfferSdp = null;
       cachedAnswerSdp = null;
+      isPlayingRemote = false;
 
       if (peerConnection) {
         peerConnection.close();
@@ -1133,28 +1177,54 @@
 
       const iceServers = await getIceServers();
       rtcLog("Creating RTCPeerConnection with ICE servers:", iceServers);
-      peerConnection = new RTCPeerConnection({ iceServers });
+      peerConnection = new RTCPeerConnection({
+        iceServers,
+        iceCandidatePoolSize: 4
+      });
 
-      // Add local media tracks or default receiver transceivers
-      if (localStream && localStream.getTracks().length > 0) {
-        localStream.getTracks().forEach(track => {
-          peerConnection.addTrack(track, localStream);
-        });
-      } else {
+      // Ensure both audio and video tracks/transceivers are negotiated properly
+      const videoTracks = localStream ? localStream.getVideoTracks() : [];
+      const audioTracks = localStream ? localStream.getAudioTracks() : [];
+
+      if (videoTracks.length > 0) {
+        peerConnection.addTrack(videoTracks[0], localStream);
+      } else if (isCaller()) {
         peerConnection.addTransceiver('video', { direction: 'recvonly' });
+      }
+
+      if (audioTracks.length > 0) {
+        peerConnection.addTrack(audioTracks[0], localStream);
+      } else if (isCaller()) {
         peerConnection.addTransceiver('audio', { direction: 'recvonly' });
       }
 
-      // Track incoming video & audio streams into persistent MediaStream
+      // Prepare fallback remote MediaStream
       remoteMediaStream = new MediaStream();
       remoteVideo.srcObject = remoteMediaStream;
 
       peerConnection.ontrack = (event) => {
         rtcLog("Received remote track:", event.track.kind);
-        if (event.track) {
-          remoteMediaStream.addTrack(event.track);
+        if (event.streams && event.streams[0]) {
+          if (remoteVideo.srcObject !== event.streams[0]) {
+            remoteVideo.srcObject = event.streams[0];
+          }
+        } else if (event.track) {
+          const exists = remoteMediaStream.getTracks().some(t => t.id === event.track.id);
+          if (!exists) {
+            remoteMediaStream.addTrack(event.track);
+          }
+          if (remoteVideo.srcObject !== remoteMediaStream) {
+            remoteVideo.srcObject = remoteMediaStream;
+          }
         }
-        playRemoteVideoSafely();
+
+        if (event.track.kind === 'video') {
+          event.track.onunmute = () => {
+            remoteVideoPlaceholder.classList.add('hidden');
+          };
+        }
+
+        playRemoteVideoSafely(event.track.kind === 'video');
       };
 
       // EXPLICIT PLAIN-OBJECT ICE CANDIDATE SERIALIZATION (iOS / SAFARI FIX)
@@ -1167,6 +1237,8 @@
             sdpMLineIndex: c.sdpMLineIndex,
             usernameFragment: c.usernameFragment
           };
+
+          allLocalIceCandidates.push(plainCand);
 
           if (strangerInRoom && roomChannel) {
             rtcLog("Sending live ICE candidate to stranger");
@@ -1191,23 +1263,34 @@
           updateStatusBadge("Connecting P2P...", "connecting");
         } else if (state === 'connected' || state === 'completed') {
           clearInterval(peerHelloInterval);
+          clearInterval(offerRetryInterval);
           updateStatusBadge("P2P Connected", "success");
           remoteVideoPlaceholder.classList.add('hidden');
           inspectCandidatePairType();
         } else if (state === 'failed') {
           webrtcTypeBadge.classList.remove('hidden');
           webrtcTypeBadge.className = "bg-red-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-xs";
-          webrtcTypeBadge.textContent = "NAT Blocked — Add TURN Key";
-          updateStatusBadge("NAT Blocked — Add TURN Key", "failed");
-          peerConnection.restartIce();
+          webrtcTypeBadge.textContent = "Retrying NAT...";
+          updateStatusBadge("Retrying NAT connection...", "connecting");
+          if (isCaller()) {
+            triggerIceRestartOffer();
+          }
         }
       };
+
+      isPeerConnectionReady = true;
+
+      // Flush any signals that arrived while RTCPeerConnection was initializing
+      while (queuedIncomingSignals.length > 0) {
+        const sig = queuedIncomingSignals.shift();
+        await handleWebRTCSignal(sig);
+      }
     }
 
     function startOfferRetryLoop() {
       clearInterval(offerRetryInterval);
       const triggerOffer = async () => {
-        if (isCaller() && peerConnection && !isRemoteDescriptionSet) {
+        if (isCaller() && peerConnection && !isRemoteDescriptionSet && appState === 'matched') {
           rtcLog("Offer retry loop triggering sendWebRTCOffer()...");
           await sendWebRTCOffer();
         } else {
@@ -1215,43 +1298,80 @@
         }
       };
       triggerOffer();
-      offerRetryInterval = setInterval(triggerOffer, 1200);
+      offerRetryInterval = setInterval(triggerOffer, 1000);
     }
 
-    // EXPLICIT PLAIN-OBJECT SDP SERIALIZATION
+    // EXPLICIT PLAIN-OBJECT SDP SERIALIZATION (SUPPORTS IDEMPOTENT RE-SENDS)
     async function sendWebRTCOffer() {
-      if (!peerConnection) return;
+      if (!peerConnection || !isPeerConnectionReady) return;
       try {
+        // If offer was already created and set, re-broadcast the cached offer & ICE candidates!
+        if (peerConnection.signalingState === 'have-local-offer' && cachedOfferSdp) {
+          rtcLog("Re-broadcasting cached SDP offer to stranger");
+          if (roomChannel) {
+            roomChannel.send({
+              type: 'broadcast',
+              event: 'webrtc_signal',
+              payload: { type: 'webrtc_offer', senderId: myUserId, sdp: cachedOfferSdp }
+            }).catch(() => {});
+          }
+          replayAllLocalIceCandidates();
+          return;
+        }
+
         if (peerConnection.signalingState !== 'stable') return;
+
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
 
-        const plainOfferSdp = {
+        cachedOfferSdp = {
           type: offer.type,
           sdp: offer.sdp
         };
 
-        rtcLog("Broadcasting plain-object SDP offer");
+        rtcLog("Broadcasting initial plain-object SDP offer");
         updateStatusBadge("Exchanging video keys...", "connecting");
 
         if (roomChannel) {
           roomChannel.send({
             type: 'broadcast',
             event: 'webrtc_signal',
-            payload: { type: 'webrtc_offer', senderId: myUserId, sdp: plainOfferSdp }
-          });
+            payload: { type: 'webrtc_offer', senderId: myUserId, sdp: cachedOfferSdp }
+          }).catch(() => {});
         }
       } catch (err) {
         rtcLog("Offer generation error:", err);
       }
     }
 
+    async function triggerIceRestartOffer() {
+      if (!peerConnection || !isCaller()) return;
+      try {
+        const offer = await peerConnection.createOffer({ iceRestart: true });
+        await peerConnection.setLocalDescription(offer);
+        cachedOfferSdp = { type: offer.type, sdp: offer.sdp };
+        isRemoteDescriptionSet = false;
+        if (roomChannel) {
+          roomChannel.send({
+            type: 'broadcast',
+            event: 'webrtc_signal',
+            payload: { type: 'webrtc_offer', senderId: myUserId, sdp: cachedOfferSdp }
+          }).catch(() => {});
+        }
+      } catch (err) {
+        rtcLog("ICE restart error:", err);
+      }
+    }
+
     // UNGATED SIGNAL HANDLER
     async function handleWebRTCSignal(data) {
-      if (!peerConnection) return;
+      if (!peerConnection || !isPeerConnectionReady) {
+        queuedIncomingSignals.push(data);
+        return;
+      }
 
       const type = data.type || data.signalType;
-      rtcLog(`Received WebRTC Signal [${type}] from stranger:`, data);
+      rtcLog(`Received WebRTC Signal [${type}] from stranger`);
 
       strangerInRoom = true;
       flushOutgoingIceCandidates();
@@ -1259,8 +1379,8 @@
       if (type === 'peer_hello') {
         if (isCaller()) {
           if (!isRemoteDescriptionSet) {
-            rtcLog("Received peer_hello as Caller -> Sending WebRTC Offer");
-            sendWebRTCOffer();
+            rtcLog("Received peer_hello as Caller -> Sending/Re-sending WebRTC Offer");
+            await sendWebRTCOffer();
           }
         } else {
           rtcLog("Received peer_hello as Callee -> Sending request_offer");
@@ -1274,21 +1394,22 @@
         }
       } else if (type === 'request_offer') {
         if (isCaller() && !isRemoteDescriptionSet) {
-          rtcLog("Received request_offer from Callee -> Sending WebRTC Offer");
-          sendWebRTCOffer();
+          rtcLog("Received request_offer from Callee -> Sending/Re-sending WebRTC Offer");
+          await sendWebRTCOffer();
         }
       } else if (type === 'webrtc_offer') {
         try {
           // Handle duplicate offer resends from caller
           if (isRemoteDescriptionSet && cachedAnswerSdp) {
-            rtcLog("Re-sending cached SDP answer to duplicate offer");
+            rtcLog("Re-sending cached SDP answer & candidates to duplicate offer");
             if (roomChannel) {
               roomChannel.send({
                 type: 'broadcast',
                 event: 'webrtc_signal',
                 payload: { type: 'webrtc_answer', senderId: myUserId, sdp: cachedAnswerSdp }
-              });
+              }).catch(() => {});
             }
+            replayAllLocalIceCandidates();
             return;
           }
 
@@ -1317,7 +1438,7 @@
               type: 'broadcast',
               event: 'webrtc_signal',
               payload: { type: 'webrtc_answer', senderId: myUserId, sdp: cachedAnswerSdp }
-            });
+            }).catch(() => {});
           }
         } catch (err) {
           rtcLog("Answer creation error:", err);
@@ -1331,6 +1452,7 @@
             clearInterval(offerRetryInterval);
             rtcLog("Callee Answer Remote Description set successfully");
             await flushIncomingIceCandidates();
+            replayAllLocalIceCandidates();
           }
         } catch (err) {
           rtcLog("Answer handle error:", err);
@@ -1364,6 +1486,18 @@
       }
     }
 
+    function replayAllLocalIceCandidates() {
+      if (!roomChannel || allLocalIceCandidates.length === 0) return;
+      pendingOutgoingIceCandidates = [];
+      allLocalIceCandidates.forEach(cand => {
+        roomChannel.send({
+          type: 'broadcast',
+          event: 'webrtc_signal',
+          payload: { type: 'candidate', senderId: myUserId, candidate: cand }
+        }).catch(() => {});
+      });
+    }
+
     async function flushIncomingIceCandidates() {
       rtcLog(`Flushing ${pendingIncomingIceCandidates.length} queued incoming ICE candidates`);
       while (pendingIncomingIceCandidates.length > 0) {
@@ -1376,26 +1510,44 @@
       }
     }
 
-    // Mobile Autoplay Protection & Unmute Guarantee
-    async function playRemoteVideoSafely() {
-      remoteVideo.muted = true;
-      try {
-        await remoteVideo.play();
+    // Mobile Autoplay Protection & Unmute Guarantee (race-safe)
+    async function playRemoteVideoSafely(hasVideoTrack = false) {
+      if (hasVideoTrack) {
         remoteVideoPlaceholder.classList.add('hidden');
+      }
 
-        // Attempt unmuting audio track
+      if (isPlayingRemote && !remoteVideo.paused) {
+        return;
+      }
+
+      isPlayingRemote = true;
+      try {
         remoteVideo.muted = false;
-        const playPromise = remoteVideo.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            // Unmuted playback blocked by mobile browser -> fall back to muted + show overlay
-            remoteVideo.muted = true;
-            remoteVideo.play();
-            tapUnmuteBtn.classList.remove('hidden');
-          });
+        await remoteVideo.play();
+        tapUnmuteBtn.classList.add('hidden');
+        if (hasVideoTrack) {
+          remoteVideoPlaceholder.classList.add('hidden');
         }
       } catch (err) {
-        tapUnmuteBtn.classList.remove('hidden');
+        if (err && err.name === 'AbortError') {
+          // Concurrent track attachment interrupted play; retry once
+          isPlayingRemote = false;
+          setTimeout(() => playRemoteVideoSafely(hasVideoTrack), 100);
+          return;
+        }
+        // Unmuted playback blocked by browser autoplay policy -> play muted + show unmute button
+        try {
+          remoteVideo.muted = true;
+          await remoteVideo.play();
+          if (hasVideoTrack) {
+            remoteVideoPlaceholder.classList.add('hidden');
+          }
+          tapUnmuteBtn.classList.remove('hidden');
+        } catch (mutedErr) {
+          tapUnmuteBtn.classList.remove('hidden');
+        }
+      } finally {
+        isPlayingRemote = false;
       }
     }
 
@@ -1479,6 +1631,7 @@
     function cleanupWebRTC(stopTracks = false) {
       clearInterval(offerRetryInterval);
       clearInterval(peerHelloInterval);
+      isPeerConnectionReady = false;
 
       if (stopTracks && localStream) {
         localStream.getTracks().forEach(track => track.stop());
@@ -1492,10 +1645,14 @@
       }
 
       pendingOutgoingIceCandidates = [];
+      allLocalIceCandidates = [];
       pendingIncomingIceCandidates = [];
+      queuedIncomingSignals = [];
       isRemoteDescriptionSet = false;
       strangerInRoom = false;
+      cachedOfferSdp = null;
       cachedAnswerSdp = null;
+      isPlayingRemote = false;
 
       remoteVideo.srcObject = null;
       remoteVideoPlaceholder.classList.remove('hidden');
