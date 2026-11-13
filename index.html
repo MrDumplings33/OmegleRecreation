@@ -488,7 +488,7 @@
         updateConnectionStatus(true, 'Online');
         const state = lobbyChannel.presenceState();
         const count = Object.keys(state).length;
-        document.getElementById('online-count').textContent = `${(count + 32480).toLocaleString()}+`;
+        document.getElementById('online-count').textContent = `${(count).toLocaleString()}+`;
 
         if (appState === 'searching') {
           evaluateMatchmaking(state);
