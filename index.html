@@ -338,14 +338,28 @@
     const TURN_USERNAME = "";
     const TURN_CREDENTIAL = "";
 
-    const PUBLIC_ICE_SERVERS = [
+    const STUN_SERVERS = [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
       { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:stun3.l.google.com:19302' },
       { urls: 'stun:stun4.l.google.com:19302' },
       { urls: 'stun:stun.cloudflare.com:3478' },
-      { urls: 'stun:global.stun.twilio.com:3478' },
+      { urls: 'stun:global.stun.twilio.com:3478' }
+    ];
+
+    const FALLBACK_TURN_SERVERS = [
+      {
+        urls: [
+          'turn:a.relay.metered.ca:80',
+          'turn:a.relay.metered.ca:80?transport=tcp',
+          'turn:a.relay.metered.ca:443',
+          'turn:a.relay.metered.ca:443?transport=tcp',
+          'turns:a.relay.metered.ca:443?transport=tcp'
+        ],
+        username: 'e8dd65b92f6dde431c113022',
+        credential: 'e/r86L8+xK97u1oN'
+      },
       {
         urls: [
           'turn:openrelay.metered.ca:80',
@@ -363,35 +377,65 @@
         ],
         username: 'ef58478122844615928',
         credential: 'e179114155966341'
+      },
+      {
+        urls: [
+          'turn:freeturn.net:3478',
+          'turn:freeturn.net:3478?transport=tcp',
+          'turns:freeturn.net:5349?transport=tcp'
+        ],
+        username: 'free',
+        credential: 'free'
       }
     ];
 
+    let cachedIceServers = null;
+
     async function getIceServers() {
-      let iceServers = [...PUBLIC_ICE_SERVERS];
+      if (cachedIceServers) return cachedIceServers;
+
+      let servers = [...STUN_SERVERS];
 
       if (METERED_DOMAIN && METERED_API_KEY) {
         try {
           const res = await fetch(`https://${METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`);
           if (res.ok) {
-            const fetchedServers = await res.json();
-            if (Array.isArray(fetchedServers) && fetchedServers.length > 0) {
-              return [...fetchedServers, ...PUBLIC_ICE_SERVERS];
+            const fetched = await res.json();
+            if (Array.isArray(fetched) && fetched.length > 0) {
+              cachedIceServers = [...fetched, ...STUN_SERVERS];
+              return cachedIceServers;
             }
           }
-        } catch (e) {
-          rtcLog("Metered TURN fetch fallback to default ICE:", e);
-        }
+        } catch (e) {}
       }
 
       if (TURN_URL && TURN_USERNAME && TURN_CREDENTIAL) {
-        iceServers.unshift({
+        servers.push({
           urls: TURN_URL,
           username: TURN_USERNAME,
           credential: TURN_CREDENTIAL
         });
       }
 
-      return iceServers;
+      try {
+        const res = await fetch('https://global.xirsys.net/_turn/MyFirstApp', {
+          method: 'PUT',
+          headers: {
+            'Authorization': 'Basic ' + btoa('demo:123456'),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ format: 'urls' })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.v && data.v.iceServers) {
+            servers = [...servers, ...(Array.isArray(data.v.iceServers) ? data.v.iceServers : [data.v.iceServers])];
+          }
+        }
+      } catch (e) {}
+
+      cachedIceServers = [...servers, ...FALLBACK_TURN_SERVERS];
+      return cachedIceServers;
     }
 
     function rtcLog(...args) {
@@ -435,6 +479,7 @@
     let micMuted = false;
     let camDisabled = false;
     let forceRelayMode = false;
+    let iceGeneration = 0;
 
     let pendingOutgoingIceCandidates = [];
     let allLocalIceCandidates = [];
@@ -445,6 +490,7 @@
     let cachedOfferSdp = null;
     let cachedAnswerSdp = null;
     let isPlayingRemote = false;
+    let isGatheringComplete = false;
 
     const homeScreen = document.getElementById('homeScreen');
     const searchingScreen = document.getElementById('searchingScreen');
@@ -492,7 +538,7 @@
           supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             realtime: {
               params: {
-                eventsPerSecond: 20
+                eventsPerSecond: 30
               }
             }
           });
@@ -528,17 +574,14 @@
       try {
         const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         await supabaseClient.from('messages').delete().lt('created_at', cutoff24h);
-      } catch (e) {
-      }
+      } catch (e) {}
     }
 
     async function safeRemoveChannel(channel) {
       if (!channel || !supabaseClient) return null;
       try {
         await supabaseClient.removeChannel(channel);
-      } catch (e) {
-        rtcLog("Safe remove channel note:", e);
-      }
+      } catch (e) {}
       return null;
     }
 
@@ -598,6 +641,7 @@
     }
 
     initSupabase();
+    getIceServers();
 
     interestInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ',') {
@@ -794,9 +838,8 @@
       cachedAnswerSdp = null;
       strangerInRoom = false;
       forceRelayMode = false;
+      iceGeneration = 0;
       queuedIncomingSignals = [];
-
-      rtcLog(`Joining room: ${roomId} | Stranger: ${strangerId} | Am I Caller: ${isCaller()}`);
 
       if (lobbyChannel) {
         lobbyChannel.track({
@@ -833,7 +876,7 @@
 
       if (supabaseClient) {
         roomChannel = supabaseClient.channel(`omegle-room-${roomId}`, {
-          config: { broadcast: { self: false } }
+          config: { broadcast: { self: false, ack: false } }
         });
 
         roomChannel.on('broadcast', { event: 'chat_message' }, (payload) => {
@@ -870,8 +913,6 @@
 
         roomChannel.subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
-            rtcLog("Room channel SUBSCRIBED successfully");
-
             if (currentMode === 'video') {
               updateStatusBadge("Waiting for stranger...", "connecting");
               startPeerHelloLoop();
@@ -895,7 +936,7 @@
           roomChannel.send({
             type: 'broadcast',
             event: 'webrtc_signal',
-            payload: { type: 'peer_hello', senderId: myUserId }
+            payload: { type: 'peer_hello', senderId: myUserId, gen: iceGeneration }
           }).catch(() => {});
         } else {
           clearInterval(peerHelloInterval);
@@ -911,7 +952,6 @@
         if (appState !== 'matched' || currentMode !== 'video' || !peerConnection) return;
         const state = peerConnection.iceConnectionState;
         if (state !== 'connected' && state !== 'completed') {
-          rtcLog("Cross-WiFi NAT watchdog triggered (state:", state, ") -> Escalating to TURN Relay");
           updateStatusBadge("Connecting via Relay...", "connecting");
           if (isCaller()) {
             await escalateToRelayMode();
@@ -919,26 +959,24 @@
               roomChannel.send({
                 type: 'broadcast',
                 event: 'webrtc_signal',
-                payload: { type: 'force_relay', senderId: myUserId }
+                payload: { type: 'force_relay', senderId: myUserId, gen: iceGeneration }
               }).catch(() => {});
             }
-          } else {
-            if (roomChannel) {
-              roomChannel.send({
-                type: 'broadcast',
-                event: 'webrtc_signal',
-                payload: { type: 'request_relay', senderId: myUserId }
-              }).catch(() => {});
-            }
+          } else if (roomChannel) {
+            roomChannel.send({
+              type: 'broadcast',
+              event: 'webrtc_signal',
+              payload: { type: 'request_relay', senderId: myUserId, gen: iceGeneration }
+            }).catch(() => {});
           }
         }
-      }, 6500);
+      }, 4500);
     }
 
     async function escalateToRelayMode() {
       if (forceRelayMode) return;
       forceRelayMode = true;
-      rtcLog("Rebuilding RTCPeerConnection with iceTransportPolicy: 'relay'");
+      iceGeneration++;
       await setupWebRTCConnection(true);
       if (isCaller()) {
         startOfferRetryLoop();
@@ -946,7 +984,6 @@
     }
 
     function handleStrangerDisconnect() {
-      rtcLog("Stranger disconnected event received");
       clearInterval(offerRetryInterval);
       clearInterval(peerHelloInterval);
       clearTimeout(iceWatchdogTimeout);
@@ -1012,8 +1049,7 @@
             sender_id: myUserId,
             content: text
           });
-        } catch (err) {
-        }
+        } catch (err) {}
       }
     };
 
@@ -1129,7 +1165,6 @@
         });
         localVideo.srcObject = localStream;
         localVideoPlaceholder.classList.add('hidden');
-        rtcLog("Acquired 4:3 video and audio stream");
       } catch (err1) {
         try {
           localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -1161,6 +1196,7 @@
       cachedOfferSdp = null;
       cachedAnswerSdp = null;
       isPlayingRemote = false;
+      isGatheringComplete = false;
 
       if (peerConnection) {
         peerConnection.close();
@@ -1168,13 +1204,12 @@
       }
 
       const iceServers = await getIceServers();
-      rtcLog("Creating RTCPeerConnection (relayOnly:", relayOnly, ") with ICE servers:", iceServers.length);
       peerConnection = new RTCPeerConnection({
         iceServers,
         iceTransportPolicy: relayOnly ? 'relay' : 'all',
         bundlePolicy: 'max-bundle',
         rtcpMuxPolicy: 'require',
-        iceCandidatePoolSize: 6
+        iceCandidatePoolSize: 8
       });
 
       const videoTracks = localStream ? localStream.getVideoTracks() : [];
@@ -1196,7 +1231,6 @@
       remoteVideo.srcObject = remoteMediaStream;
 
       peerConnection.ontrack = (event) => {
-        rtcLog("Received remote track:", event.track.kind);
         if (event.streams && event.streams[0]) {
           if (remoteVideo.srcObject !== event.streams[0]) {
             remoteVideo.srcObject = event.streams[0];
@@ -1236,10 +1270,23 @@
             roomChannel.send({
               type: 'broadcast',
               event: 'webrtc_signal',
-              payload: { type: 'candidate', senderId: myUserId, candidate: plainCand }
+              payload: { type: 'candidate', senderId: myUserId, candidate: plainCand, gen: iceGeneration }
             }).catch(() => {});
           } else {
             pendingOutgoingIceCandidates.push(plainCand);
+          }
+        } else {
+          isGatheringComplete = true;
+          if (peerConnection && peerConnection.localDescription) {
+            const fullSdp = {
+              type: peerConnection.localDescription.type,
+              sdp: peerConnection.localDescription.sdp
+            };
+            if (fullSdp.type === 'offer') {
+              cachedOfferSdp = fullSdp;
+            } else if (fullSdp.type === 'answer') {
+              cachedAnswerSdp = fullSdp;
+            }
           }
         }
       };
@@ -1247,7 +1294,6 @@
       peerConnection.oniceconnectionstatechange = () => {
         if (!peerConnection) return;
         const state = peerConnection.iceConnectionState;
-        rtcLog("ICE Connection State changed:", state);
 
         if (state === 'checking') {
           updateStatusBadge(forceRelayMode ? "Connecting via Relay..." : "Connecting P2P...", "connecting");
@@ -1270,7 +1316,7 @@
                   roomChannel.send({
                     type: 'broadcast',
                     event: 'webrtc_signal',
-                    payload: { type: 'force_relay', senderId: myUserId }
+                    payload: { type: 'force_relay', senderId: myUserId, gen: iceGeneration }
                   }).catch(() => {});
                 }
               });
@@ -1281,7 +1327,7 @@
             roomChannel.send({
               type: 'broadcast',
               event: 'webrtc_signal',
-              payload: { type: 'request_relay', senderId: myUserId }
+              payload: { type: 'request_relay', senderId: myUserId, gen: iceGeneration }
             }).catch(() => {});
           }
         }
@@ -1293,6 +1339,29 @@
         const sig = queuedIncomingSignals.shift();
         await handleWebRTCSignal(sig);
       }
+    }
+
+    function waitForIceGathering(pc, timeoutMs = 1500) {
+      return new Promise((resolve) => {
+        if (!pc || pc.iceGatheringState === 'complete') {
+          resolve();
+          return;
+        }
+        let settled = false;
+        const done = () => {
+          if (settled) return;
+          settled = true;
+          pc.removeEventListener('icegatheringstatechange', onStateChange);
+          resolve();
+        };
+        const onStateChange = () => {
+          if (pc.iceGatheringState === 'complete') {
+            done();
+          }
+        };
+        pc.addEventListener('icegatheringstatechange', onStateChange);
+        setTimeout(done, timeoutMs);
+      });
     }
 
     function startOfferRetryLoop() {
@@ -1312,11 +1381,17 @@
       if (!peerConnection || !isPeerConnectionReady) return;
       try {
         if (peerConnection.signalingState === 'have-local-offer' && cachedOfferSdp) {
+          if (peerConnection.localDescription && peerConnection.localDescription.sdp) {
+            cachedOfferSdp = {
+              type: peerConnection.localDescription.type,
+              sdp: peerConnection.localDescription.sdp
+            };
+          }
           if (roomChannel) {
             roomChannel.send({
               type: 'broadcast',
               event: 'webrtc_signal',
-              payload: { type: 'webrtc_offer', senderId: myUserId, sdp: cachedOfferSdp, relay: forceRelayMode }
+              payload: { type: 'webrtc_offer', senderId: myUserId, sdp: cachedOfferSdp, relay: forceRelayMode, gen: iceGeneration }
             }).catch(() => {});
           }
           replayAllLocalIceCandidates();
@@ -1327,10 +1402,12 @@
 
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
+        await waitForIceGathering(peerConnection, 1200);
 
+        const activeDesc = peerConnection.localDescription || offer;
         cachedOfferSdp = {
-          type: offer.type,
-          sdp: offer.sdp
+          type: activeDesc.type,
+          sdp: activeDesc.sdp
         };
 
         updateStatusBadge(forceRelayMode ? "Exchanging Relay keys..." : "Exchanging video keys...", "connecting");
@@ -1339,12 +1416,11 @@
           roomChannel.send({
             type: 'broadcast',
             event: 'webrtc_signal',
-            payload: { type: 'webrtc_offer', senderId: myUserId, sdp: cachedOfferSdp, relay: forceRelayMode }
+            payload: { type: 'webrtc_offer', senderId: myUserId, sdp: cachedOfferSdp, relay: forceRelayMode, gen: iceGeneration }
           }).catch(() => {});
         }
-      } catch (err) {
-        rtcLog("Offer generation error:", err);
-      }
+        replayAllLocalIceCandidates();
+      } catch (err) {}
     }
 
     async function triggerIceRestartOffer() {
@@ -1352,18 +1428,19 @@
       try {
         const offer = await peerConnection.createOffer({ iceRestart: true });
         await peerConnection.setLocalDescription(offer);
-        cachedOfferSdp = { type: offer.type, sdp: offer.sdp };
+        await waitForIceGathering(peerConnection, 1200);
+        const activeDesc = peerConnection.localDescription || offer;
+        cachedOfferSdp = { type: activeDesc.type, sdp: activeDesc.sdp };
         isRemoteDescriptionSet = false;
         if (roomChannel) {
           roomChannel.send({
             type: 'broadcast',
             event: 'webrtc_signal',
-            payload: { type: 'webrtc_offer', senderId: myUserId, sdp: cachedOfferSdp, relay: forceRelayMode }
+            payload: { type: 'webrtc_offer', senderId: myUserId, sdp: cachedOfferSdp, relay: forceRelayMode, gen: iceGeneration }
           }).catch(() => {});
         }
-      } catch (err) {
-        rtcLog("ICE restart error:", err);
-      }
+        replayAllLocalIceCandidates();
+      } catch (err) {}
     }
 
     async function handleWebRTCSignal(data) {
@@ -1382,7 +1459,7 @@
           roomChannel.send({
             type: 'broadcast',
             event: 'webrtc_signal',
-            payload: { type: 'force_relay', senderId: myUserId }
+            payload: { type: 'force_relay', senderId: myUserId, gen: iceGeneration }
           }).catch(() => {});
         }
         return;
@@ -1394,9 +1471,13 @@
           roomChannel.send({
             type: 'broadcast',
             event: 'webrtc_signal',
-            payload: { type: 'request_offer', senderId: myUserId }
+            payload: { type: 'request_offer', senderId: myUserId, gen: iceGeneration }
           }).catch(() => {});
         }
+        return;
+      }
+
+      if (typeof data.gen === 'number' && data.gen < iceGeneration) {
         return;
       }
 
@@ -1410,7 +1491,7 @@
             roomChannel.send({
               type: 'broadcast',
               event: 'webrtc_signal',
-              payload: { type: 'request_offer', senderId: myUserId }
+              payload: { type: 'request_offer', senderId: myUserId, gen: iceGeneration }
             }).catch(() => {});
           }
         }
@@ -1425,11 +1506,17 @@
           }
 
           if (isRemoteDescriptionSet && cachedAnswerSdp) {
+            if (peerConnection.localDescription && peerConnection.localDescription.sdp) {
+              cachedAnswerSdp = {
+                type: peerConnection.localDescription.type,
+                sdp: peerConnection.localDescription.sdp
+              };
+            }
             if (roomChannel) {
               roomChannel.send({
                 type: 'broadcast',
                 event: 'webrtc_signal',
-                payload: { type: 'webrtc_answer', senderId: myUserId, sdp: cachedAnswerSdp }
+                payload: { type: 'webrtc_answer', senderId: myUserId, sdp: cachedAnswerSdp, gen: iceGeneration }
               }).catch(() => {});
             }
             replayAllLocalIceCandidates();
@@ -1448,22 +1535,23 @@
 
           const answer = await peerConnection.createAnswer();
           await peerConnection.setLocalDescription(answer);
+          await waitForIceGathering(peerConnection, 1200);
 
+          const activeDesc = peerConnection.localDescription || answer;
           cachedAnswerSdp = {
-            type: answer.type,
-            sdp: answer.sdp
+            type: activeDesc.type,
+            sdp: activeDesc.sdp
           };
 
           if (roomChannel) {
             roomChannel.send({
               type: 'broadcast',
               event: 'webrtc_signal',
-              payload: { type: 'webrtc_answer', senderId: myUserId, sdp: cachedAnswerSdp }
+              payload: { type: 'webrtc_answer', senderId: myUserId, sdp: cachedAnswerSdp, gen: iceGeneration }
             }).catch(() => {});
           }
-        } catch (err) {
-          rtcLog("Answer creation error:", err);
-        }
+          replayAllLocalIceCandidates();
+        } catch (err) {}
       } else if (type === 'webrtc_answer') {
         try {
           if (peerConnection.signalingState === 'have-local-offer') {
@@ -1474,16 +1562,12 @@
             await flushIncomingIceCandidates();
             replayAllLocalIceCandidates();
           }
-        } catch (err) {
-          rtcLog("Answer handle error:", err);
-        }
+        } catch (err) {}
       } else if (type === 'candidate' && data.candidate) {
         if (isRemoteDescriptionSet) {
           try {
             await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-          } catch (e) {
-            rtcLog("Add ICE candidate error:", e);
-          }
+          } catch (e) {}
         } else {
           pendingIncomingIceCandidates.push(data.candidate);
         }
@@ -1497,7 +1581,7 @@
           roomChannel.send({
             type: 'broadcast',
             event: 'webrtc_signal',
-            payload: { type: 'candidate', senderId: myUserId, candidate: cand }
+            payload: { type: 'candidate', senderId: myUserId, candidate: cand, gen: iceGeneration }
           }).catch(() => {});
         }
       }
@@ -1510,7 +1594,7 @@
         roomChannel.send({
           type: 'broadcast',
           event: 'webrtc_signal',
-          payload: { type: 'candidate', senderId: myUserId, candidate: cand }
+          payload: { type: 'candidate', senderId: myUserId, candidate: cand, gen: iceGeneration }
         }).catch(() => {});
       });
     }
@@ -1520,9 +1604,7 @@
         const cand = pendingIncomingIceCandidates.shift();
         try {
           await peerConnection.addIceCandidate(new RTCIceCandidate(cand));
-        } catch (e) {
-          rtcLog("Flush incoming candidate error:", e);
-        }
+        } catch (e) {}
       }
     }
 
@@ -1647,6 +1729,7 @@
       clearTimeout(iceWatchdogTimeout);
       isPeerConnectionReady = false;
       forceRelayMode = false;
+      iceGeneration = 0;
 
       if (stopTracks && localStream) {
         localStream.getTracks().forEach(track => track.stop());
