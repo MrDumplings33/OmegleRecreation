@@ -108,6 +108,10 @@
       flex-shrink: 0;
     }
 
+    #videoColumn.hidden {
+      display: none !important;
+    }
+
     .video-box-43 {
       width: 100%;
       aspect-ratio: 4 / 3;
@@ -127,6 +131,12 @@
       object-fit: contain; /* Full uncropped 4:3 camera view */
       background-color: #141414;
       display: block;
+    }
+
+    .cam-watermark {
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+      user-select: none;
+      pointer-events: none;
     }
   </style>
 </head>
@@ -236,31 +246,12 @@
       </div>
     </div>
 
-    <div id="searchingScreen" class="hidden h-full flex flex-col justify-center items-center p-4">
-      <div class="w-full max-w-md bg-white rounded-lg border border-[#b8c6d4] shadow-md p-8 text-center space-y-5">
-        <div class="w-12 h-12 border-4 border-[#1d75bd] border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <div class="space-y-1">
-          <h2 class="text-base font-bold text-slate-800">Looking for someone you can chat with...</h2>
-          <p id="search-subtext" class="text-xs text-slate-500">Searching in <span id="search-mode-text" class="font-bold text-[#1d75bd]">Text</span> mode</p>
-        </div>
-        <div id="searching-interests-badge" class="hidden flex flex-wrap justify-center gap-1 text-xs text-slate-500"></div>
-        <button onclick="cancelMatching()" class="px-5 py-2 rounded-md border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 transition">
-          Cancel
-        </button>
-      </div>
-    </div>
-
     <div id="chatScreen" class="hidden h-[calc(100dvh-56px)] flex flex-row gap-2.5 p-2 overflow-hidden box-border">
 
       <div id="videoColumn" class="hidden">
         
         <div id="stranger-video-box" class="video-box-43">
-          <video id="remote-video" autoplay playsinline></video>
-
-          <button id="tap-unmute-btn" onclick="unmuteRemoteAudio()" class="hidden absolute inset-0 z-30 bg-black/70 text-white flex flex-col items-center justify-center gap-2 p-3 transition hover:bg-black/80">
-            <i class="fas fa-volume-xmark text-3xl text-amber-400 animate-bounce"></i>
-            <span class="font-bold text-xs bg-amber-500 text-slate-950 px-3 py-1 rounded-full shadow">Tap to Unmute Stranger</span>
-          </button>
+          <video id="remote-video" autoplay playsinline muted></video>
 
           <div id="remote-video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-[#141414] text-slate-400 p-2 text-center z-10">
             <i id="remote-status-icon" class="fas fa-circle-notch text-2xl text-[#1d75bd] animate-spin mb-1.5"></i>
@@ -272,6 +263,10 @@
             <span id="webrtc-type-badge" class="hidden bg-emerald-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded shadow-xs">
               P2P
             </span>
+          </div>
+
+          <div class="cam-watermark absolute bottom-2 left-2 z-20 text-white/85 text-[11px] font-bold tracking-tight bg-black/45 px-2 py-0.5 rounded">
+            Omegele.fun
           </div>
         </div>
 
@@ -285,10 +280,11 @@
             You
           </div>
 
+          <div class="cam-watermark absolute bottom-2 left-2 z-20 text-white/85 text-[11px] font-bold tracking-tight bg-black/45 px-2 py-0.5 rounded">
+            Omegele.fun
+          </div>
+
           <div class="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-black/70 p-1 rounded">
-            <button id="toggle-mic-btn" onclick="toggleMic()" class="w-6 h-6 rounded bg-slate-800 text-white hover:bg-slate-700 transition flex items-center justify-center text-[10px]" title="Mute/Unmute Mic">
-              <i class="fas fa-microphone"></i>
-            </button>
             <button id="toggle-cam-btn" onclick="toggleCam()" class="w-6 h-6 rounded bg-slate-800 text-white hover:bg-slate-700 transition flex items-center justify-center text-[10px]" title="Turn Camera On/Off">
               <i class="fas fa-video"></i>
             </button>
@@ -300,11 +296,7 @@
       <div id="chatPane" class="flex-1 min-w-0 h-full flex flex-col gap-2">
 
         <div id="chatLogWrapper" class="bg-white border border-[#b8c6d4] rounded-md flex-1 min-h-0 flex flex-col overflow-hidden shadow-xs">
-          <div id="chatLog" class="flex-1 min-h-0 overflow-y-auto p-3.5 text-[15px] leading-[1.45] space-y-2 bg-white font-sans">
-            <div class="text-xs font-bold text-slate-500 my-1">
-              You're now chatting with a random stranger. Say hi!
-            </div>
-          </div>
+          <div id="chatLog" class="flex-1 min-h-0 overflow-y-auto p-3.5 text-[15px] leading-[1.45] space-y-2 bg-white font-sans"></div>
 
           <div id="typing-indicator" class="h-6 px-3.5 text-xs italic text-slate-500 flex items-center gap-1.5 opacity-0 transition-opacity bg-white border-t border-slate-100 flex-shrink-0">
             Stranger is typing...
@@ -318,9 +310,9 @@
             <span class="text-[10px] font-normal opacity-60">Esc</span>
           </button>
 
-          <textarea id="chat-input" rows="2" placeholder="Type your message..." class="flex-1 h-full resize-none border border-[#b8c6d4] rounded-md p-2.5 text-[15px] bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#1d75bd]"></textarea>
+          <textarea id="chat-input" rows="2" placeholder="Type your message..." disabled class="flex-1 h-full resize-none border border-[#b8c6d4] rounded-md p-2.5 text-[15px] bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#1d75bd] disabled:bg-slate-100 disabled:text-slate-400"></textarea>
 
-          <button id="send-msg-btn" onclick="sendChatMessage()" class="btn-classic-gray w-[104px] h-full rounded-md font-bold text-base flex flex-col items-center justify-center leading-tight whitespace-nowrap flex-shrink-0">
+          <button id="send-msg-btn" onclick="sendChatMessage()" disabled class="btn-classic-gray w-[104px] h-full rounded-md font-bold text-base flex flex-col items-center justify-center leading-tight whitespace-nowrap flex-shrink-0 disabled:opacity-50">
             <span>Send</span>
             <span class="text-[10px] font-normal opacity-60">Enter</span>
           </button>
@@ -343,6 +335,8 @@
     const TURN_URL = "";        // e.g. "turn:relays.example.com:443?transport=tcp"
     const TURN_USERNAME = "";
     const TURN_CREDENTIAL = "";
+
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
     const PUBLIC_STUN_SERVERS = [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -410,6 +404,7 @@
     let offerRetryInterval = null;
     let peerHelloInterval = null;
     let reallyTimeout = null;
+    let autoDeleteInterval = null;
 
     let lobbyChannel = null;
     let roomChannel = null;
@@ -419,7 +414,6 @@
     let isPeerConnectionReady = false;
     let localStream = null;
     let remoteMediaStream = null;
-    let micMuted = false;
     let camDisabled = false;
 
     let pendingOutgoingIceCandidates = [];
@@ -433,7 +427,6 @@
     let isPlayingRemote = false;
 
     const homeScreen = document.getElementById('homeScreen');
-    const searchingScreen = document.getElementById('searchingScreen');
     const chatScreen = document.getElementById('chatScreen');
     const videoColumn = document.getElementById('videoColumn');
 
@@ -441,10 +434,9 @@
     const tagsContainer = document.getElementById('tags-container');
     const matchInterestsCheckbox = document.getElementById('match-interests-checkbox');
 
-    const searchModeText = document.getElementById('search-mode-text');
-    const searchingInterestsBadge = document.getElementById('searching-interests-badge');
     const chatLog = document.getElementById('chatLog');
     const chatInput = document.getElementById('chat-input');
+    const sendMsgBtn = document.getElementById('send-msg-btn');
     const typingIndicator = document.getElementById('typing-indicator');
     const escActionBtn = document.getElementById('esc-action-btn');
 
@@ -455,10 +447,17 @@
     const p2pStatusText = document.getElementById('p2p-status-text');
     const remoteStatusIcon = document.getElementById('remote-status-icon');
     const webrtcTypeBadge = document.getElementById('webrtc-type-badge');
-    const tapUnmuteBtn = document.getElementById('tap-unmute-btn');
 
     function isCaller() {
       return strangerUserId ? (myUserId < strangerUserId) : false;
+    }
+
+    function setChatInputEnabled(enabled) {
+      chatInput.disabled = !enabled;
+      sendMsgBtn.disabled = !enabled;
+      if (enabled) {
+        chatInput.focus();
+      }
     }
 
     function updateStatusBadge(text, stateClass = 'info') {
@@ -486,6 +485,13 @@
         rtcLog("Supabase init note:", e);
         updateConnectionStatus(false, 'Offline');
       }
+
+      // Periodically auto-delete any messages over 1 day old
+      clearInterval(autoDeleteInterval);
+      autoDeleteInterval = setInterval(() => {
+        cleanupOldMessages();
+        purgeExpiredDomMessages();
+      }, 15 * 60 * 1000);
     }
 
     function updateConnectionStatus(isOnline, text) {
@@ -504,12 +510,24 @@
     }
 
     async function cleanupOldMessages() {
+      purgeExpiredDomMessages();
       if (!supabaseClient) return;
       try {
-        const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const cutoff24h = new Date(Date.now() - ONE_DAY_MS).toISOString();
         await supabaseClient.from('messages').delete().lt('created_at', cutoff24h);
       } catch (e) {
       }
+    }
+
+    function purgeExpiredDomMessages() {
+      const now = Date.now();
+      const msgNodes = chatLog.querySelectorAll('[data-created-at]');
+      msgNodes.forEach(node => {
+        const ts = Number(node.getAttribute('data-created-at'));
+        if (ts && (now - ts) > ONE_DAY_MS) {
+          node.remove();
+        }
+      });
     }
 
     async function safeRemoveChannel(channel) {
@@ -618,25 +636,32 @@
       searchStartTime = Date.now();
       pendingOfferPeerId = null;
       pendingOfferRoomId = null;
-      
-      homeScreen.classList.add('hidden');
-      searchingScreen.classList.remove('hidden');
-      chatScreen.classList.add('hidden');
 
-      searchModeText.textContent = mode === 'video' ? 'Video' : 'Text';
-      
-      searchingInterestsBadge.innerHTML = '';
+      // Go straight to the chat view just like classic Omegle
+      homeScreen.classList.add('hidden');
+      chatScreen.classList.remove('hidden');
+
+      setEscButtonState('STOP');
+      setChatInputEnabled(false);
+      typingIndicator.classList.add('opacity-0');
+
+      chatLog.innerHTML = '';
+      appendSystemMessage("Looking for someone you can chat with...");
       if (interestTags.length > 0 && matchInterestsCheckbox.checked) {
-        searchingInterestsBadge.classList.remove('hidden');
-        searchingInterestsBadge.innerHTML = `<span class="text-xs text-slate-400">Searching:</span>` +
-          interestTags.map(t => `<span class="text-xs bg-slate-100 px-1.5 py-0.5 rounded border">#${escapeHtml(t)}</span>`).join(' ');
-      } else {
-        searchingInterestsBadge.classList.add('hidden');
+        appendSystemMessage(`Interests: ${interestTags.join(', ')}`);
       }
 
       if (currentMode === 'video') {
-        updateStatusBadge("Starting camera...", "connecting");
+        videoColumn.classList.remove('hidden');
+        remoteVideo.srcObject = null;
+        remoteVideoPlaceholder.classList.remove('hidden');
+        webrtcTypeBadge.classList.add('hidden');
+        updateStatusBadge("Waiting for stranger...", "connecting");
         await acquireLocalMedia();
+      } else {
+        // Strictly hide video cameras and release any media streams on text mode
+        videoColumn.classList.add('hidden');
+        cleanupWebRTC(true);
       }
 
       if (lobbyChannel) {
@@ -737,22 +762,14 @@
       }
     }
 
-    window.cancelMatching = function() {
+    window.returnToLanding = async function() {
       clearInterval(lobbyPollInterval);
       clearInterval(matchOfferInterval);
       pendingOfferPeerId = null;
       pendingOfferRoomId = null;
-      appState = 'idle';
-      if (lobbyChannel) {
-        lobbyChannel.track({ userId: myUserId, status: 'idle', joinedAt: Date.now() });
-      }
-      returnToLanding();
-    };
-
-    window.returnToLanding = async function() {
       await leaveCurrentRoom(true);
       appState = 'idle';
-      searchingScreen.classList.add('hidden');
+      videoColumn.classList.add('hidden');
       chatScreen.classList.add('hidden');
       homeScreen.classList.remove('hidden');
     };
@@ -786,11 +803,11 @@
         });
       }
 
-      searchingScreen.classList.add('hidden');
       homeScreen.classList.add('hidden');
       chatScreen.classList.remove('hidden');
 
       setEscButtonState('STOP');
+      setChatInputEnabled(true);
 
       chatLog.innerHTML = '';
       appendSystemMessage("You're now chatting with a random stranger. Say hi!");
@@ -803,11 +820,11 @@
         updateStatusBadge("Initializing video...", "connecting");
         remoteVideoPlaceholder.classList.remove('hidden');
         webrtcTypeBadge.classList.add('hidden');
-        tapUnmuteBtn.classList.add('hidden');
 
         await setupWebRTCConnection();
       } else {
         videoColumn.classList.add('hidden');
+        cleanupWebRTC(true);
       }
 
       if (supabaseClient) {
@@ -818,7 +835,7 @@
         roomChannel.on('broadcast', { event: 'chat_message' }, (payload) => {
           const msg = payload.payload;
           if (msg.senderId !== myUserId) {
-            appendChatMessage("Stranger", msg.text, false);
+            appendChatMessage("Stranger", msg.text, false, msg.timestamp);
           }
         });
 
@@ -837,6 +854,7 @@
         });
 
         roomChannel.on('broadcast', { event: 'webrtc_signal' }, (payload) => {
+          if (currentMode !== 'video') return;
           const data = payload.payload;
           if (data.senderId !== myUserId) {
             if (!isPeerConnectionReady) {
@@ -869,7 +887,7 @@
     function startPeerHelloLoop() {
       clearInterval(peerHelloInterval);
       const sendHello = () => {
-        if (roomChannel && appState === 'matched') {
+        if (roomChannel && appState === 'matched' && currentMode === 'video') {
           roomChannel.send({
             type: 'broadcast',
             event: 'webrtc_signal',
@@ -887,6 +905,11 @@
       rtcLog("Stranger disconnected event received");
       clearInterval(offerRetryInterval);
       clearInterval(peerHelloInterval);
+      appState = 'idle';
+      currentRoomId = null;
+      strangerUserId = null;
+      setChatInputEnabled(false);
+      typingIndicator.classList.add('opacity-0');
       appendSystemMessage("Stranger has disconnected.");
       appendInlineNewButton();
       setEscButtonState('NEW');
@@ -896,7 +919,6 @@
         remoteStatusIcon.className = "fas fa-user-slash text-2xl text-slate-500 mb-1.5";
         remoteVideoPlaceholder.classList.remove('hidden');
         webrtcTypeBadge.classList.add('hidden');
-        tapUnmuteBtn.classList.add('hidden');
       }
     }
 
@@ -926,23 +948,25 @@
 
     window.sendChatMessage = async function() {
       const text = chatInput.value.trim();
-      if (!text || !currentRoomId) return;
+      if (!text || !currentRoomId || appState !== 'matched') return;
 
+      const now = Date.now();
       chatInput.value = '';
       sendTypingStatus(false);
 
-      appendChatMessage("You", text, true);
+      appendChatMessage("You", text, true, now);
 
       if (roomChannel) {
         roomChannel.send({
           type: 'broadcast',
           event: 'chat_message',
-          payload: { senderId: myUserId, text: text, timestamp: Date.now() }
+          payload: { senderId: myUserId, text: text, timestamp: now }
         });
       }
 
       if (supabaseClient) {
         try {
+          await cleanupOldMessages();
           await supabaseClient.from('messages').insert({
             room_id: currentRoomId,
             sender_id: myUserId,
@@ -963,7 +987,7 @@
     });
 
     function handleTyping() {
-      if (!roomChannel) return;
+      if (!roomChannel || appState !== 'matched') return;
       sendTypingStatus(true);
       clearTimeout(typingTimeout);
       typingTimeout = setTimeout(() => sendTypingStatus(false), 2000);
@@ -978,9 +1002,12 @@
       }).catch(() => {});
     }
 
-    function appendChatMessage(sender, text, isYou) {
+    function appendChatMessage(sender, text, isYou, timestamp = Date.now()) {
+      if ((Date.now() - timestamp) > ONE_DAY_MS) return;
+
       const div = document.createElement('div');
       div.className = 'leading-snug';
+      div.setAttribute('data-created-at', String(timestamp));
 
       const labelColor = isYou ? 'text-[#1a6ed8] font-bold' : 'text-[#d92626] font-bold';
       const senderName = isYou ? 'You:' : 'Stranger:';
@@ -989,6 +1016,13 @@
 
       chatLog.appendChild(div);
       chatLog.scrollTop = chatLog.scrollHeight;
+
+      // Auto-remove this message from the view once it reaches 1 day old
+      setTimeout(() => {
+        if (div.parentNode) {
+          div.remove();
+        }
+      }, ONE_DAY_MS);
     }
 
     function appendSystemMessage(text) {
@@ -1028,10 +1062,29 @@
     }
 
     window.handleEscAction = async function() {
+      // If still searching, cancel search immediately on Stop/Esc
+      if (appState === 'searching') {
+        clearInterval(lobbyPollInterval);
+        clearInterval(matchOfferInterval);
+        pendingOfferPeerId = null;
+        pendingOfferRoomId = null;
+        appState = 'idle';
+        if (lobbyChannel) {
+          lobbyChannel.track({ userId: myUserId, status: 'idle', joinedAt: Date.now() });
+        }
+        appendSystemMessage("Stopped searching.");
+        appendInlineNewButton();
+        setEscButtonState('NEW');
+        return;
+      }
+
       if (escButtonState === 'STOP') {
         setEscButtonState('REALLY');
       } else if (escButtonState === 'REALLY') {
         await leaveCurrentRoom(false);
+        appState = 'idle';
+        setChatInputEnabled(false);
+        typingIndicator.classList.add('opacity-0');
         appendSystemMessage("You have disconnected.");
         appendInlineNewButton();
         setEscButtonState('NEW');
@@ -1048,47 +1101,45 @@
     });
 
     async function acquireLocalMedia() {
+      // Never access camera or microphone in text mode
+      if (currentMode !== 'video') return null;
       if (localStream && localStream.active) return localStream;
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         localStream = null;
         localVideo.srcObject = null;
         localVideoPlaceholder.classList.remove('hidden');
-        document.getElementById('local-status-text').textContent = "Text mode (No HTTPS)";
+        document.getElementById('local-status-text').textContent = "Camera unavailable (No HTTPS)";
         return null;
       }
 
       try {
+        // Video only — microphone is never requested or used
         localStream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-          audio: true
+          audio: false
         });
         localVideo.srcObject = localStream;
         localVideoPlaceholder.classList.add('hidden');
-        rtcLog("Acquired 4:3 video and audio stream");
+        rtcLog("Acquired 4:3 video-only stream (no microphone)");
       } catch (err1) {
         try {
-          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
           localVideo.srcObject = localStream;
           localVideoPlaceholder.classList.add('hidden');
         } catch (err2) {
-          try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-            localVideo.srcObject = null;
-            localVideoPlaceholder.classList.remove('hidden');
-            document.getElementById('local-status-text').textContent = "Mic active";
-          } catch (err3) {
-            localStream = null;
-            localVideo.srcObject = null;
-            localVideoPlaceholder.classList.remove('hidden');
-            document.getElementById('local-status-text').textContent = "Receiver mode";
-          }
+          localStream = null;
+          localVideo.srcObject = null;
+          localVideoPlaceholder.classList.remove('hidden');
+          document.getElementById('local-status-text').textContent = "Receiver mode";
         }
       }
       return localStream;
     }
 
     async function setupWebRTCConnection() {
+      if (currentMode !== 'video') return;
+
       isPeerConnectionReady = false;
       pendingOutgoingIceCandidates = [];
       allLocalIceCandidates = [];
@@ -1111,7 +1162,6 @@
       });
 
       const videoTracks = localStream ? localStream.getVideoTracks() : [];
-      const audioTracks = localStream ? localStream.getAudioTracks() : [];
 
       if (videoTracks.length > 0) {
         peerConnection.addTrack(videoTracks[0], localStream);
@@ -1119,17 +1169,13 @@
         peerConnection.addTransceiver('video', { direction: 'recvonly' });
       }
 
-      if (audioTracks.length > 0) {
-        peerConnection.addTrack(audioTracks[0], localStream);
-      } else if (isCaller()) {
-        peerConnection.addTransceiver('audio', { direction: 'recvonly' });
-      }
-
       remoteMediaStream = new MediaStream();
       remoteVideo.srcObject = remoteMediaStream;
 
       peerConnection.ontrack = (event) => {
         rtcLog("Received remote track:", event.track.kind);
+        if (event.track.kind !== 'video') return;
+
         if (event.streams && event.streams[0]) {
           if (remoteVideo.srcObject !== event.streams[0]) {
             remoteVideo.srcObject = event.streams[0];
@@ -1144,13 +1190,11 @@
           }
         }
 
-        if (event.track.kind === 'video') {
-          event.track.onunmute = () => {
-            remoteVideoPlaceholder.classList.add('hidden');
-          };
-        }
+        event.track.onunmute = () => {
+          remoteVideoPlaceholder.classList.add('hidden');
+        };
 
-        playRemoteVideoSafely(event.track.kind === 'video');
+        playRemoteVideoSafely(true);
       };
 
       peerConnection.onicecandidate = (event) => {
@@ -1214,7 +1258,7 @@
     function startOfferRetryLoop() {
       clearInterval(offerRetryInterval);
       const triggerOffer = async () => {
-        if (isCaller() && peerConnection && !isRemoteDescriptionSet && appState === 'matched') {
+        if (isCaller() && peerConnection && !isRemoteDescriptionSet && appState === 'matched' && currentMode === 'video') {
           rtcLog("Offer retry loop triggering sendWebRTCOffer()...");
           await sendWebRTCOffer();
         } else {
@@ -1286,6 +1330,7 @@
     }
 
     async function handleWebRTCSignal(data) {
+      if (currentMode !== 'video') return;
       if (!peerConnection || !isPeerConnectionReady) {
         queuedIncomingSignals.push(data);
         return;
@@ -1441,9 +1486,8 @@
 
       isPlayingRemote = true;
       try {
-        remoteVideo.muted = false;
+        remoteVideo.muted = true;
         await remoteVideo.play();
-        tapUnmuteBtn.classList.add('hidden');
         if (hasVideoTrack) {
           remoteVideoPlaceholder.classList.add('hidden');
         }
@@ -1453,29 +1497,10 @@
           setTimeout(() => playRemoteVideoSafely(hasVideoTrack), 100);
           return;
         }
-        try {
-          remoteVideo.muted = true;
-          await remoteVideo.play();
-          if (hasVideoTrack) {
-            remoteVideoPlaceholder.classList.add('hidden');
-          }
-          tapUnmuteBtn.classList.remove('hidden');
-        } catch (mutedErr) {
-          tapUnmuteBtn.classList.remove('hidden');
-        }
       } finally {
         isPlayingRemote = false;
       }
     }
-
-    window.unmuteRemoteAudio = function() {
-      remoteVideo.muted = false;
-      remoteVideo.play().then(() => {
-        tapUnmuteBtn.classList.add('hidden');
-      }).catch(() => {
-        tapUnmuteBtn.classList.remove('hidden');
-      });
-    };
 
     async function inspectCandidatePairType() {
       if (!peerConnection) return;
@@ -1512,18 +1537,6 @@
         updateStatusBadge("Connected", "success");
       }
     }
-
-    window.toggleMic = function() {
-      if (!localStream) return;
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        micMuted = !audioTrack.enabled;
-        document.getElementById('toggle-mic-btn').innerHTML = micMuted 
-          ? '<i class="fas fa-microphone-slash text-red-400"></i>' 
-          : '<i class="fas fa-microphone"></i>';
-      }
-    };
 
     window.toggleCam = function() {
       if (!localStream) return;
@@ -1573,7 +1586,6 @@
       remoteVideo.srcObject = null;
       remoteVideoPlaceholder.classList.remove('hidden');
       webrtcTypeBadge.classList.add('hidden');
-      tapUnmuteBtn.classList.add('hidden');
       updateStatusBadge("Connecting video...", "connecting");
     }
   </script>
