@@ -124,19 +124,9 @@
     .video-box-43 video {
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: contain; /* Full uncropped 4:3 camera view */
       background-color: #141414;
       display: block;
-    }
-
-    #chatScreen.text-mode #videoColumn {
-      display: none !important;
-    }
-
-    #chatScreen.text-mode #chatPane {
-      width: 100%;
-      min-width: 0;
-      flex: 1 1 100%;
     }
   </style>
 </head>
@@ -181,7 +171,7 @@
       <span>Mobile camera access requires <strong>HTTPS</strong> or <strong>localhost</strong>. Text chat remains functional over HTTP LAN.</span>
     </div>
 
-    <div id="homeScreen" class="hidden h-full flex flex-col justify-center items-center p-4 overflow-y-auto">
+    <div id="homeScreen" class="h-full flex flex-col justify-center items-center p-4 overflow-y-auto">
       <div class="w-full max-w-[680px] bg-white rounded-lg border border-[#b8c6d4] shadow-md p-6 space-y-5">
 
         <div class="space-y-1.5 text-left">
@@ -246,7 +236,21 @@
       </div>
     </div>
 
-    <div id="chatScreen" class="h-[calc(100dvh-56px)] flex flex-row gap-2.5 p-2 overflow-hidden box-border">
+    <div id="searchingScreen" class="hidden h-full flex flex-col justify-center items-center p-4">
+      <div class="w-full max-w-md bg-white rounded-lg border border-[#b8c6d4] shadow-md p-8 text-center space-y-5">
+        <div class="w-12 h-12 border-4 border-[#1d75bd] border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <div class="space-y-1">
+          <h2 class="text-base font-bold text-slate-800">Looking for someone you can chat with...</h2>
+          <p id="search-subtext" class="text-xs text-slate-500">Searching in <span id="search-mode-text" class="font-bold text-[#1d75bd]">Text</span> mode</p>
+        </div>
+        <div id="searching-interests-badge" class="hidden flex flex-wrap justify-center gap-1 text-xs text-slate-500"></div>
+        <button onclick="cancelMatching()" class="px-5 py-2 rounded-md border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 transition">
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <div id="chatScreen" class="hidden h-[calc(100dvh-56px)] flex flex-row gap-2.5 p-2 overflow-hidden box-border">
 
       <div id="videoColumn" class="hidden">
         
@@ -294,17 +298,6 @@
       </div>
 
       <div id="chatPane" class="flex-1 min-w-0 h-full flex flex-col gap-2">
-
-        <div id="disconnected-controls" class="bg-white border border-[#b8c6d4] rounded-md px-3 py-2 flex flex-wrap items-center justify-between gap-2 shadow-xs">
-          <div class="flex items-center gap-2 text-xs text-slate-600">
-            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
-            <span id="chat-status-label">You are not connected to a stranger.</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <button onclick="startMatching('text')" class="btn-omegle-gloss px-4 py-1.5 rounded font-bold text-xs">Text</button>
-            <button onclick="startMatching('video')" class="btn-omegle-gloss px-4 py-1.5 rounded font-bold text-xs">Video</button>
-          </div>
-        </div>
 
         <div id="chatLogWrapper" class="bg-white border border-[#b8c6d4] rounded-md flex-1 min-h-0 flex flex-col overflow-hidden shadow-xs">
           <div id="chatLog" class="flex-1 min-h-0 overflow-y-auto p-3.5 text-[15px] leading-[1.45] space-y-2 bg-white font-sans">
@@ -400,7 +393,7 @@
     let supabaseClient = null;
     const myUserId = 'usr_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
 
-    let appState = 'idle';
+    let appState = 'idle'; // 'idle' | 'searching' | 'matched'
     let interestTags = [];
     let currentMode = 'text'; // 'text' | 'video'
     let currentRoomId = null;
@@ -440,6 +433,7 @@
     let isPlayingRemote = false;
 
     const homeScreen = document.getElementById('homeScreen');
+    const searchingScreen = document.getElementById('searchingScreen');
     const chatScreen = document.getElementById('chatScreen');
     const videoColumn = document.getElementById('videoColumn');
 
@@ -462,7 +456,6 @@
     const remoteStatusIcon = document.getElementById('remote-status-icon');
     const webrtcTypeBadge = document.getElementById('webrtc-type-badge');
     const tapUnmuteBtn = document.getElementById('tap-unmute-btn');
-    document.getElementById('chatLog').innerHTML = '<div class="text-xs font-bold text-slate-500 my-1">You are not connected to anyone. Choose Text or Video to start chatting.</div>';
 
     function isCaller() {
       return strangerUserId ? (myUserId < strangerUserId) : false;
@@ -627,11 +620,19 @@
       pendingOfferRoomId = null;
       
       homeScreen.classList.add('hidden');
-      chatScreen.classList.remove('hidden');
-      document.getElementById('disconnected-controls').classList.add('hidden');
-      chatLog.innerHTML = '';
-      appendSystemMessage(`Connecting in ${mode} mode. Waiting for a stranger...`);
-      document.getElementById('chat-status-label').textContent = 'Waiting for a stranger...';
+      searchingScreen.classList.remove('hidden');
+      chatScreen.classList.add('hidden');
+
+      searchModeText.textContent = mode === 'video' ? 'Video' : 'Text';
+      
+      searchingInterestsBadge.innerHTML = '';
+      if (interestTags.length > 0 && matchInterestsCheckbox.checked) {
+        searchingInterestsBadge.classList.remove('hidden');
+        searchingInterestsBadge.innerHTML = `<span class="text-xs text-slate-400">Searching:</span>` +
+          interestTags.map(t => `<span class="text-xs bg-slate-100 px-1.5 py-0.5 rounded border">#${escapeHtml(t)}</span>`).join(' ');
+      } else {
+        searchingInterestsBadge.classList.add('hidden');
+      }
 
       if (currentMode === 'video') {
         updateStatusBadge("Starting camera...", "connecting");
@@ -751,12 +752,9 @@
     window.returnToLanding = async function() {
       await leaveCurrentRoom(true);
       appState = 'idle';
-      chatScreen.classList.remove('hidden');
-      homeScreen.classList.add('hidden');
-      document.getElementById('disconnected-controls').classList.remove('hidden');
-      document.getElementById('chat-status-label').textContent = 'You are not connected to a stranger.';
-      chatLog.innerHTML = '';
-      appendSystemMessage('You are not connected to anyone. Choose Text or Video to start chatting.');
+      searchingScreen.classList.add('hidden');
+      chatScreen.classList.add('hidden');
+      homeScreen.classList.remove('hidden');
     };
 
     async function joinChatRoom(roomId, strangerId, sharedInterests) {
@@ -788,12 +786,9 @@
         });
       }
 
+      searchingScreen.classList.add('hidden');
       homeScreen.classList.add('hidden');
       chatScreen.classList.remove('hidden');
-      chatScreen.classList.toggle('text-mode', currentMode === 'text');
-      document.getElementById('disconnected-controls').classList.add('hidden');
-      document.getElementById('chat-status-label').textContent = 'Connected to a stranger.';
-      videoColumn.style.display = currentMode === 'video' ? 'flex' : 'none';
 
       setEscButtonState('STOP');
 
@@ -805,7 +800,6 @@
 
       if (currentMode === 'video') {
         videoColumn.classList.remove('hidden');
-        videoColumn.style.display = 'flex';
         updateStatusBadge("Initializing video...", "connecting");
         remoteVideoPlaceholder.classList.remove('hidden');
         webrtcTypeBadge.classList.add('hidden');
@@ -814,7 +808,6 @@
         await setupWebRTCConnection();
       } else {
         videoColumn.classList.add('hidden');
-        videoColumn.style.display = 'none';
       }
 
       if (supabaseClient) {
@@ -897,8 +890,6 @@
       appendSystemMessage("Stranger has disconnected.");
       appendInlineNewButton();
       setEscButtonState('NEW');
-      document.getElementById('disconnected-controls').classList.remove('hidden');
-      document.getElementById('chat-status-label').textContent = 'Stranger disconnected.';
       if (currentMode === 'video') {
         remoteVideo.srcObject = null;
         updateStatusBadge("Stranger left", "failed");
